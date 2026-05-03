@@ -65,6 +65,26 @@ AI keys are provided by the platform — users do not enter them. The AI model i
 | `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` or `https://api-m.paypal.com` |
 | `PAYPAL_REDIRECT_URI` | OAuth callback URL |
 
+## Required — QuickBooks (platform OAuth app)
+
+> Register a QuickBooks app at [developer.intuit.com](https://developer.intuit.com). Each Finvio user then authorizes their own QuickBooks company through this one platform app. The redirect URI must be registered in the app settings.
+
+| Variable | Description |
+|---|---|
+| `QB_CLIENT_ID` | QuickBooks app client ID from developer.intuit.com |
+| `QB_CLIENT_SECRET` | QuickBooks app client secret |
+| `QB_ENVIRONMENT` | `sandbox` (default) or `production` — controls which QB API endpoint is used |
+
+**Redirect URI to register in QuickBooks developer portal:**
+```
+https://yourdomain.com/api/connections/quickbooks/callback
+```
+
+**Required OAuth scopes:**
+```
+com.intuit.quickbooks.accounting
+```
+
 ## Required — Vercel Cron
 
 | Variable | Description |
@@ -75,4 +95,4 @@ AI keys are provided by the platform — users do not enter them. The AI model i
 
 | Variable | Description |
 |---|---|
-| `NEXT_PUBLIC_APP_URL` | Public base URL (e.g. `https://app.finpilot.com`) — used for OAuth redirect URIs |
+| `NEXT_PUBLIC_APP_URL` | Public base URL (e.g. `https://app.finvio.ai`) — used for OAuth redirect URIs |

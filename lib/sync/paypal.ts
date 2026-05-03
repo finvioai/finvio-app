@@ -2,51 +2,19 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { decrypt } from '@/lib/encryption'
 import { categorize } from '@/lib/categorization/rules'
 
-// ─── PayPal OAuth helpers ─────────────────────────────────────────────────────
+// ─── PayPal credential helpers ────────────────────────────────────────────────
 
-function getPayPalBaseUrl() {
-  return process.env.PAYPAL_ENV === 'production'
-    ? 'https://api-m.paypal.com'
-    : 'https://api-m.sandbox.paypal.com'
-}
-
-export function getPayPalAuthUrl(state: string): string {
-  const baseUrl = process.env.PAYPAL_ENV === 'production'
-    ? 'https://www.paypal.com'
-    : 'https://www.sandbox.paypal.com'
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/connections/paypal/callback`
-  return (
-    `${baseUrl}/signin/authorize` +
-    `?client_id=${process.env.PAYPAL_CLIENT_ID}` +
-    `&response_type=code` +
-    `&scope=openid%20https://uri.paypal.com/services/reporting/search/read` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&state=${state}`
-  )
-}
-
-export async function exchangePayPalCode(code: string): Promise<{ accessToken: string; refreshToken: string }> {
-  const base = getPayPalBaseUrl()
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/connections/paypal/callback`
-  const credentials = Buffer.from(
-    `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
-  ).toString('base64')
-
+async function getPayPalAccessToken(clientId: string, clientSecret: string, sandbox: boolean): Promise<string> {
+  const base = sandbox ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com'
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
   const res = await fetch(`${base}/v1/oauth2/token`, {
     method: 'POST',
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: redirectUri,
-    }).toString(),
+    headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=client_credentials',
   })
-  if (!res.ok) throw new Error(`PayPal token exchange failed: ${res.statusText}`)
-  const json = await res.json() as { access_token: string; refresh_token: string }
-  return { accessToken: json.access_token, refreshToken: json.refresh_token }
+  if (!res.ok) throw new Error(`PayPal token request failed: ${res.statusText}`)
+  const json = await res.json() as { access_token: string }
+  return json.access_token
 }
 
 // ─── PayPal transaction sync ──────────────────────────────────────────────────
@@ -67,28 +35,6 @@ interface PayPalTransaction {
   }
 }
 
-async function getPayPalAccessToken(refreshToken: string): Promise<string> {
-  const base = getPayPalBaseUrl()
-  const credentials = Buffer.from(
-    `${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`
-  ).toString('base64')
-
-  const res = await fetch(`${base}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-    }).toString(),
-  })
-  if (!res.ok) throw new Error(`PayPal token refresh failed: ${res.statusText}`)
-  const json = await res.json() as { access_token: string }
-  return json.access_token
-}
-
 export async function syncPayPalTransactions(
   orgId: string,
   connectionId: string,
@@ -96,13 +42,18 @@ export async function syncPayPalTransactions(
 ): Promise<{ synced: number; skipped: number; error?: string }> {
   const { data: connection } = await supabase
     .from('connections')
-    .select('encrypted_access_token, encrypted_refresh_token')
+    .select('encrypted_access_token, account_name, metadata')
     .eq('id', connectionId)
     .single()
 
-  if (!connection?.encrypted_refresh_token) {
-    return { synced: 0, skipped: 0, error: 'No refresh token found' }
+  if (!connection?.encrypted_access_token) {
+    return { synced: 0, skipped: 0, error: 'No credentials found. Reconnect PayPal.' }
   }
+
+  const meta = (connection.metadata ?? {}) as Record<string, unknown>
+  const sandbox = meta.sandbox !== false
+  const clientId = (meta.paypal_client_id as string) ?? connection.account_name ?? ''
+  const clientSecret = decrypt(connection.encrypted_access_token)
 
   const { data: log } = await supabase
     .from('sync_logs')
@@ -121,9 +72,8 @@ export async function syncPayPalTransactions(
   let skipped = 0
 
   try {
-    const refreshToken = decrypt(connection.encrypted_refresh_token)
-    const accessToken = await getPayPalAccessToken(refreshToken)
-    const base = getPayPalBaseUrl()
+    const accessToken = await getPayPalAccessToken(clientId, clientSecret, sandbox)
+    const base = sandbox ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com'
 
     const endDate = new Date()
     const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000)

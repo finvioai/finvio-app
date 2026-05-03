@@ -40,7 +40,7 @@ export default async function DashboardLayout({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <span className="text-base font-bold text-gray-900">FinPilot</span>
+            <span className="text-base font-bold text-gray-900">Finvio</span>
           </div>
         </header>
 

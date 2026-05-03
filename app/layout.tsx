@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'FinPilot — AI Financial Intelligence',
+  title: 'Finvio — AI Financial Intelligence',
   description: 'AI-powered financial intelligence for startups and SMBs',
 };
 

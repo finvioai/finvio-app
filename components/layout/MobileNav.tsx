@@ -76,7 +76,7 @@ export function MobileNav({ userEmail, orgName }: MobileNavProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <span className="text-lg font-bold text-gray-900">FinPilot</span>
+              <span className="text-lg font-bold text-gray-900">Finvio</span>
             </div>
             <button onClick={() => setOpen(false)}>
               <X className="h-5 w-5 text-gray-400" />

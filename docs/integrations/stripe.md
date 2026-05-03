@@ -6,7 +6,7 @@ Stripe uses a **per-user key model** — each organization enters their own Stri
 
 1. Go to **Connections** page → **Connect Stripe**
 2. Paste your Stripe secret key (`sk_live_…` or `sk_test_…`) from [Stripe Dashboard → API Keys](https://dashboard.stripe.com/apikeys)
-3. FinPilot validates the key against the Stripe API and stores it encrypted (AES-256-GCM) in the database
+3. Finvio validates the key against the Stripe API and stores it encrypted (AES-256-GCM) in the database
 4. Click **Sync Now** to pull the last 30 days of charges, customers, and subscriptions
 5. *(Optional)* Create a webhook in Stripe dashboard pointing to `/api/webhooks/stripe` and add `STRIPE_WEBHOOK_SECRET` to your env for real-time event sync
 

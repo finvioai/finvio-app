@@ -1,40 +1,74 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getPayPalAuthUrl } from '@/lib/sync/paypal'
-import { randomBytes } from 'crypto'
+import { encrypt } from '@/lib/encryption'
 
-// GET /api/connections/paypal
-// Redirects to PayPal OAuth authorization page
-export async function GET() {
-  if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_CLIENT_SECRET) {
-    return NextResponse.json({ error: 'PayPal integration is not configured' }, { status: 503 })
-  }
-
-  const state = randomBytes(16).toString('hex')
-  const authUrl = getPayPalAuthUrl(state)
-
-  const response = NextResponse.redirect(authUrl)
-  response.cookies.set('paypal_oauth_state', state, { httpOnly: true, maxAge: 300, path: '/' })
-  return response
-}
-
-export async function DELETE(request: NextRequest) {
+// POST /api/connections/paypal — connect via user's own PayPal REST API credentials
+export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: member } = await supabase
-    .from('org_members')
-    .select('org_id')
-    .eq('user_id', user.id)
-    .single()
+    .from('org_members').select('org_id').eq('user_id', user.id).single()
   if (!member) return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
 
-  await supabase
+  const body = await request.json()
+  const clientId: string = (body.client_id ?? '').trim()
+  const clientSecret: string = (body.client_secret ?? '').trim()
+  const sandbox: boolean = body.sandbox !== false // default sandbox=true
+
+  if (!clientId || !clientSecret) {
+    return NextResponse.json({ error: 'Client ID and Client Secret are required' }, { status: 400 })
+  }
+
+  const base = sandbox ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com'
+
+  // Validate credentials by getting an access token (client_credentials flow)
+  try {
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+    const res = await fetch(`${base}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    })
+    if (!res.ok) throw new Error(`PayPal returned ${res.status}`)
+    const json = await res.json() as { access_token?: string }
+    if (!json.access_token) throw new Error('No access token returned')
+  } catch {
+    return NextResponse.json({ error: 'Invalid PayPal credentials. Check your Client ID and Secret.' }, { status: 400 })
+  }
+
+  const { error } = await supabase
     .from('connections')
-    .update({ status: 'disconnected' })
-    .eq('org_id', member.org_id)
-    .eq('provider', 'paypal')
+    .upsert({
+      org_id: member.org_id,
+      provider: 'paypal',
+      status: 'active',
+      account_name: clientId,
+      encrypted_access_token: encrypt(clientSecret),
+      metadata: { sandbox, paypal_client_id: clientId },
+    }, { onConflict: 'org_id,provider' })
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ connected: true })
+}
+
+export async function DELETE() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: member } = await supabase
+    .from('org_members').select('org_id').eq('user_id', user.id).single()
+  if (!member) return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
+
+  await supabase.from('connections')
+    .update({ status: 'disconnected', encrypted_access_token: null })
+    .eq('org_id', member.org_id).eq('provider', 'paypal')
 
   return NextResponse.json({ disconnected: true })
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { encrypt } from '@/lib/encryption'
+import { runStripePullSync } from '@/lib/sync/stripe'
 import Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   const encryptedToken = encrypt(secretKey)
 
-  const { error } = await supabase
+  const { data: conn, error } = await supabase
     .from('connections')
     .upsert({
       org_id: member.org_id,
@@ -52,10 +53,24 @@ export async function POST(request: NextRequest) {
       encrypted_access_token: encryptedToken,
       account_name: accountName,
     }, { onConflict: 'org_id,provider' })
+    .select('id')
+    .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ connected: true, account_name: accountName })
+  // Auto-sync immediately after connecting
+  let syncResult: { synced: number; skipped: number; error?: string } = { synced: 0, skipped: 0 }
+  if (conn?.id) {
+    syncResult = await runStripePullSync(member.org_id, conn.id, supabase)
+  }
+
+  return NextResponse.json({
+    connected: true,
+    account_name: accountName,
+    synced: syncResult.synced,
+    skipped: syncResult.skipped,
+    sync_error: syncResult.error ?? null,
+  })
 }
 
 export async function DELETE() {

@@ -1,6 +1,6 @@
-# Development Steps — FinPilot
+# Development Steps — Finvio
 
-This file tracks the step-by-step development progress for FinPilot.
+This file tracks the step-by-step development progress for Finvio.
 
 **Key decisions:**
 - LLM keys are product-provided (server env vars only — users pick a model, never paste a key)

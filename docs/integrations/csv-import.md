@@ -19,7 +19,7 @@
 
 ## Column mapping
 
-| FinPilot field | Required | Notes |
+| Finvio field | Required | Notes |
 |---|---|---|
 | `date` | Yes | Supports: `YYYY-MM-DD`, `MM/DD/YYYY`, `DD/MM/YYYY`, `MM-DD-YYYY`, Unix timestamp |
 | `amount` | Yes | Strips `$`, `€`, commas; handles negatives |
