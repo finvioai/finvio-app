@@ -342,10 +342,10 @@ export async function getDataCompleteness(orgId: string): Promise<DataCompletene
 
   const connMap = new Map((connections ?? []).map((c) => [c.provider, c.status]))
 
-  const stripeConnected = connMap.get('stripe') === 'connected'
-  const bankConnected = connMap.get('plaid') === 'connected'
-  const shopifyConnected = connMap.get('shopify') === 'connected'
-  const paypalConnected = connMap.get('paypal') === 'connected'
+  const stripeConnected = connMap.get('stripe') === 'active'
+  const bankConnected = connMap.get('plaid') === 'active'
+  const shopifyConnected = connMap.get('shopify') === 'active'
+  const paypalConnected = connMap.get('paypal') === 'active'
 
   const { count: manualCount } = await supabase
     .from('transactions')

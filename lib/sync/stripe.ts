@@ -1,10 +1,28 @@
 import Stripe from 'stripe'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { categorize } from '@/lib/categorization/rules'
+import { decrypt } from '@/lib/encryption'
 
-export function getStripeClient() {
-  if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY is not set')
-  return new Stripe(process.env.STRIPE_SECRET_KEY)
+export function getStripeClient(secretKey?: string) {
+  const key = secretKey ?? process.env.STRIPE_SECRET_KEY
+  if (!key) throw new Error('No Stripe secret key available')
+  return new Stripe(key)
+}
+
+export async function getStripeClientForOrg(orgId: string, supabase: SupabaseClient): Promise<Stripe> {
+  const { data: connection } = await supabase
+    .from('connections')
+    .select('encrypted_access_token')
+    .eq('org_id', orgId)
+    .eq('provider', 'stripe')
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (connection?.encrypted_access_token) {
+    const key = decrypt(connection.encrypted_access_token)
+    return getStripeClient(key)
+  }
+  return getStripeClient()
 }
 
 // ─── Customer sync ────────────────────────────────────────────────────────────
@@ -244,7 +262,7 @@ export async function runStripePullSync(
   connectionId: string,
   supabase: SupabaseClient
 ): Promise<{ synced: number; skipped: number; error?: string }> {
-  const stripe = getStripeClient()
+  const stripe = await getStripeClientForOrg(orgId, supabase)
 
   // Log sync start
   const { data: log } = await supabase

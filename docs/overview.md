@@ -24,7 +24,7 @@ FinPilot is a SaaS financial intelligence platform for startups and SMBs. It ing
 
 - **Frontend**: Next.js 14 (App Router), React 19, Tailwind CSS, shadcn/ui, Recharts
 - **Backend**: Next.js API Routes (Edge-compatible), Supabase (Postgres + Auth + Storage)
-- **AI**: OpenAI SDK + Anthropic SDK — product-provided keys, user picks model in settings
+- **AI**: OpenAI SDK + Anthropic SDK — product-provided keys, model configured server-side (no user-facing model picker)
 - **Integrations**: Stripe SDK, Plaid SDK, Shopify REST API, PayPal REST API
 - **Security**: AES-256-GCM token encryption, Supabase RLS, CRON_SECRET header auth
 - **Infra**: Vercel (deployment + cron), Supabase (hosted Postgres)

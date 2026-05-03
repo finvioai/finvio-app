@@ -16,25 +16,6 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-const LLM_OPTIONS: Record<string, { label: string; models: { value: string; label: string }[] }> = {
-  openai: {
-    label: 'OpenAI',
-    models: [
-      { value: 'gpt-4o', label: 'GPT-4o' },
-      { value: 'gpt-4o-mini', label: 'GPT-4o mini' },
-      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-    ],
-  },
-  anthropic: {
-    label: 'Anthropic',
-    models: [
-      { value: 'claude-opus-4-7', label: 'Claude Opus 4.7' },
-      { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-      { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
-    ],
-  },
-}
-
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -70,16 +51,12 @@ export default function SettingsPage() {
   const [role, setRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [savingOrg, setSavingOrg] = useState(false)
-  const [savingAI, setSavingAI] = useState(false)
   const [savedOrg, setSavedOrg] = useState(false)
-  const [savedAI, setSavedAI] = useState(false)
 
   // Form state
   const [orgName, setOrgName] = useState('')
   const [currency, setCurrency] = useState('USD')
   const [fiscalStart, setFiscalStart] = useState(1)
-  const [provider, setProvider] = useState('openai')
-  const [model, setModel] = useState('gpt-4o-mini')
 
   useEffect(() => {
     fetch('/api/settings')
@@ -91,8 +68,6 @@ export default function SettingsPage() {
         setOrgName(d.org?.name ?? '')
         setCurrency(d.org?.currency ?? 'USD')
         setFiscalStart(d.org?.fiscal_year_start ?? 1)
-        setProvider(d.userSettings?.llm_provider ?? 'openai')
-        setModel(d.userSettings?.llm_model ?? 'gpt-4o-mini')
       })
       .finally(() => setLoading(false))
   }, [])
@@ -111,22 +86,7 @@ export default function SettingsPage() {
     setTimeout(() => setSavedOrg(false), 3000)
   }
 
-  async function saveAI(e: React.FormEvent) {
-    e.preventDefault()
-    setSavingAI(true)
-    setSavedAI(false)
-    await fetch('/api/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userSettings: { llm_provider: provider, llm_model: model } }),
-    })
-    setSavingAI(false)
-    setSavedAI(true)
-    setTimeout(() => setSavedAI(false), 3000)
-  }
-
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
-  const availableModels = LLM_OPTIONS[provider]?.models ?? []
 
   const selectClass = 'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
   const inputClass = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -144,7 +104,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Organization, AI model, and preferences</p>
+        <p className="text-sm text-gray-500 mt-0.5">Organization and preferences</p>
       </div>
 
       {/* Org Settings */}
@@ -195,41 +155,6 @@ export default function SettingsPage() {
               {savingOrg ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
             </Button>
             {savedOrg && (
-              <span className="flex items-center gap-1 text-sm text-green-600">
-                <CheckCircle2 className="h-4 w-4" /> Saved
-              </span>
-            )}
-          </div>
-        </form>
-      </Section>
-
-      {/* AI Model */}
-      <Section title="AI Model">
-        <p className="text-xs text-gray-500 -mt-1 mb-3">
-          API keys are managed by FinPilot. Select the model that best fits your needs.
-        </p>
-        <form onSubmit={saveAI} className="space-y-4">
-          <Field label="Provider">
-            <select value={provider} onChange={(e) => { setProvider(e.target.value); setModel(LLM_OPTIONS[e.target.value]?.models[0]?.value ?? '') }} className={selectClass}>
-              {Object.entries(LLM_OPTIONS).map(([key, opt]) => (
-                <option key={key} value={key}>{opt.label}</option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="Model">
-            <select value={model} onChange={(e) => setModel(e.target.value)} className={selectClass}>
-              {availableModels.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </Field>
-
-          <div className="flex items-center gap-3 pt-2">
-            <Button type="submit" disabled={savingAI} size="sm">
-              {savingAI ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save model'}
-            </Button>
-            {savedAI && (
               <span className="flex items-center gap-1 text-sm text-green-600">
                 <CheckCircle2 className="h-4 w-4" /> Saved
               </span>

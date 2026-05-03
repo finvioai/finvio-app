@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession, getOrgInfo } from '@/lib/auth'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileNav } from '@/components/layout/MobileNav'
+import { FloatingAdvisorButton } from '@/components/chat/FloatingAdvisorButton'
 
 export default async function DashboardLayout({
   children,
@@ -47,6 +48,7 @@ export default async function DashboardLayout({
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>
+        <FloatingAdvisorButton />
       </div>
     </div>
   )

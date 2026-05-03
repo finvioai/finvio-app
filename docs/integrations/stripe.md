@@ -2,9 +2,19 @@
 
 ## Setup
 
-1. Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to environment variables
-2. Go to Connections page → Connect Stripe
-3. Create a webhook in Stripe dashboard pointing to `/api/webhooks/stripe`
+Stripe uses a **per-user key model** — each organization enters their own Stripe secret key through the web UI. No server-side env var is needed for the user-facing integration.
+
+1. Go to **Connections** page → **Connect Stripe**
+2. Paste your Stripe secret key (`sk_live_…` or `sk_test_…`) from [Stripe Dashboard → API Keys](https://dashboard.stripe.com/apikeys)
+3. FinPilot validates the key against the Stripe API and stores it encrypted (AES-256-GCM) in the database
+4. Click **Sync Now** to pull the last 30 days of charges, customers, and subscriptions
+5. *(Optional)* Create a webhook in Stripe dashboard pointing to `/api/webhooks/stripe` and add `STRIPE_WEBHOOK_SECRET` to your env for real-time event sync
+
+## Key storage
+
+- User's Stripe secret key is stored in the `connections` table as `encrypted_access_token` (AES-256-GCM, requires `ENCRYPTION_KEY` env var)
+- At sync time, the key is decrypted server-side and used to initialize the Stripe client
+- The `STRIPE_SECRET_KEY` env var is a fallback for cron jobs / webhooks but is **not required** for the per-user UI connection flow
 
 ## Webhook ingestion
 

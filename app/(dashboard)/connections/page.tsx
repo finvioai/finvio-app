@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckCircle2, AlertCircle, Loader2, RefreshCw, Unplug } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Loader2, RefreshCw, Unplug, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import type { Connection } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -13,10 +12,9 @@ interface ProviderConfig {
   id: string
   name: string
   description: string
-  logo: string         // emoji placeholder
+  logo: string
   comingSoon?: boolean
   syncRoute?: string
-  connectRoute?: string
 }
 
 const PROVIDERS: ProviderConfig[] = [
@@ -40,7 +38,6 @@ const PROVIDERS: ProviderConfig[] = [
     description: 'Import paid orders and revenue from your Shopify store',
     logo: '🛍',
     syncRoute: '/api/sync/shopify',
-    connectRoute: '/api/connections/shopify',
   },
   {
     id: 'paypal',
@@ -48,7 +45,6 @@ const PROVIDERS: ProviderConfig[] = [
     description: 'Sync PayPal transactions and settlements',
     logo: '💰',
     syncRoute: '/api/sync/paypal',
-    connectRoute: '/api/connections/paypal',
   },
   {
     id: 'mercury',
@@ -80,9 +76,36 @@ const PROVIDERS: ProviderConfig[] = [
   },
 ]
 
+function providerEnvLabel(id: string): string {
+  const labels: Record<string, string> = {
+    plaid: 'PLAID_CLIENT_ID + PLAID_SECRET',
+    shopify: 'SHOPIFY_API_KEY + SHOPIFY_API_SECRET',
+    paypal: 'PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET',
+  }
+  return labels[id] ?? 'required env vars'
+}
+
 function fmtDate(iso: string | null) {
   if (!iso) return null
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <button onClick={onClose} className="rounded-md p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">{children}</div>
+      </div>
+    </div>
+  )
 }
 
 // ─── Provider Card ────────────────────────────────────────────────────────────
@@ -90,15 +113,17 @@ function fmtDate(iso: string | null) {
 function ProviderCard({
   provider,
   connection,
+  configured,
   onSync,
   onDisconnect,
-  onConnectPlaid,
+  onConnect,
 }: {
   provider: ProviderConfig
   connection?: Connection
+  configured: boolean
   onSync: (providerId: string) => void
   onDisconnect: (providerId: string) => void
-  onConnectPlaid: () => void
+  onConnect: (providerId: string) => void
 }) {
   const [syncing, setSyncing] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -116,7 +141,7 @@ function ProviderCard({
       const res = await fetch(provider.syncRoute, { method: 'POST' })
       const json = await res.json()
       if (!res.ok) { setSyncError(json.error ?? 'Sync failed'); return }
-      setSyncResult({ synced: json.synced, skipped: json.skipped })
+      setSyncResult({ synced: json.synced ?? 0, skipped: json.skipped ?? 0 })
       onSync(provider.id)
     } finally {
       setSyncing(false)
@@ -126,55 +151,40 @@ function ProviderCard({
   async function handleDisconnect() {
     setDisconnecting(true)
     try {
-      let deleteUrl = ''
-      if (provider.id === 'plaid') deleteUrl = '/api/connections/plaid'
-      else if (provider.id === 'shopify') deleteUrl = '/api/connections/shopify'
-      else if (provider.id === 'paypal') deleteUrl = '/api/connections/paypal'
-      else return // Stripe has no disconnect UI (managed via dashboard)
-
-      await fetch(deleteUrl, { method: 'DELETE' })
+      const routeMap: Record<string, string> = {
+        stripe: '/api/connections/stripe',
+        plaid: '/api/connections/plaid',
+        shopify: '/api/connections/shopify',
+        paypal: '/api/connections/paypal',
+      }
+      const url = routeMap[provider.id]
+      if (!url) return
+      await fetch(url, { method: 'DELETE' })
       onDisconnect(provider.id)
     } finally {
       setDisconnecting(false)
     }
   }
 
-  function handleConnect() {
-    if (provider.id === 'plaid') {
-      onConnectPlaid()
-      return
-    }
-    if (provider.connectRoute) {
-      window.location.href = provider.connectRoute
-    }
-  }
-
   return (
-    <div className={cn(
-      'rounded-xl border bg-white p-5 space-y-4 transition-opacity',
-      provider.comingSoon && 'opacity-60'
-    )}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-xl">
-            {provider.logo}
+    <div className={cn('rounded-xl border bg-white p-5 space-y-4 transition-opacity', provider.comingSoon && 'opacity-60')}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-xl shrink-0">
+          {provider.logo}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-semibold text-gray-900">{provider.name}</h3>
+            {provider.comingSoon && (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Coming Soon</span>
+            )}
+            {isConnected && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                <CheckCircle2 className="h-3 w-3" /> Connected
+              </span>
+            )}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900">{provider.name}</h3>
-              {provider.comingSoon && (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                  Coming Soon
-                </span>
-              )}
-              {isConnected && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                  <CheckCircle2 className="h-3 w-3" /> Connected
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mt-0.5">{provider.description}</p>
-          </div>
+          <p className="text-xs text-gray-500 mt-0.5">{provider.description}</p>
         </div>
       </div>
 
@@ -201,7 +211,7 @@ function ProviderCard({
       )}
 
       {!provider.comingSoon && (
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {isConnected ? (
             <>
               <Button size="sm" onClick={handleSync} disabled={syncing}>
@@ -214,14 +224,14 @@ function ProviderCard({
                 <span className="ml-1.5">Disconnect</span>
               </Button>
             </>
-          ) : provider.id === 'stripe' ? (
-            <div className="text-xs text-gray-500 bg-gray-50 rounded px-3 py-2">
-              Configure <code className="font-mono">STRIPE_SECRET_KEY</code> + <code className="font-mono">STRIPE_WEBHOOK_SECRET</code> in your environment to activate Stripe sync.
-            </div>
-          ) : (
-            <Button size="sm" onClick={handleConnect}>
+          ) : configured ? (
+            <Button size="sm" onClick={() => onConnect(provider.id)}>
               Connect {provider.name}
             </Button>
+          ) : (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+              Add <code className="font-mono font-semibold">{providerEnvLabel(provider.id)}</code> to your <code className="font-mono">.env.local</code> to enable this integration.
+            </div>
           )}
         </div>
       )}
@@ -229,54 +239,12 @@ function ProviderCard({
   )
 }
 
-// ─── Plaid Link Modal ─────────────────────────────────────────────────────────
-
-function PlaidConnectSection({ onConnected }: { onConnected: () => void }) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  async function handleConnect() {
-    setLoading(true)
-    setError('')
-    try {
-      const res = await fetch('/api/connections/plaid', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'link-token' }),
-      })
-      const json = await res.json()
-      if (!res.ok) { setError(json.error ?? 'Failed to create link token'); return }
-
-      // Plaid Link SDK is loaded dynamically
-      const { open } = await loadPlaidLink(json.link_token, async (publicToken: string) => {
-        const exchangeRes = await fetch('/api/connections/plaid', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'exchange', public_token: publicToken }),
-        })
-        if (exchangeRes.ok) {
-          onConnected()
-        } else {
-          const err = await exchangeRes.json()
-          setError(err.error ?? 'Token exchange failed')
-        }
-      })
-      open()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect bank')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return { handleConnect, loading, error }
-}
+// ─── Plaid helper ─────────────────────────────────────────────────────────────
 
 async function loadPlaidLink(
   token: string,
   onSuccess: (publicToken: string) => void
 ): Promise<{ open: () => void }> {
-  // Dynamically load Plaid Link SDK
   await new Promise<void>((resolve, reject) => {
     if (document.getElementById('plaid-link-script')) { resolve(); return }
     const script = document.createElement('script')
@@ -286,7 +254,6 @@ async function loadPlaidLink(
     script.onerror = reject
     document.head.appendChild(script)
   })
-
   // @ts-expect-error — Plaid Link is loaded dynamically
   return window.Plaid.create({
     token,
@@ -297,17 +264,36 @@ async function loadPlaidLink(
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type ModalType = 'stripe' | 'shopify' | 'paypal' | null
+
 export default function ConnectionsPage() {
   const [connections, setConnections] = useState<Connection[]>([])
+  const [configured, setConfigured] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
-  const [plaidConnecting, setPlaidConnecting] = useState(false)
-  const [plaidError, setPlaidError] = useState('')
+
+  // Modal state
+  const [modal, setModal] = useState<ModalType>(null)
+  const [modalLoading, setModalLoading] = useState(false)
+  const [modalError, setModalError] = useState('')
+
+  // Per-modal inputs
+  const [stripeKey, setStripeKey] = useState('')
+  const [shopDomain, setShopDomain] = useState('')
+
+  // Page-level errors (e.g. Plaid)
+  const [pageError, setPageError] = useState('')
 
   async function fetchConnections() {
-    const res = await fetch('/api/connections')
-    if (res.ok) {
-      const json = await res.json()
+    const [connRes, cfgRes] = await Promise.all([
+      fetch('/api/connections'),
+      fetch('/api/connections/configured'),
+    ])
+    if (connRes.ok) {
+      const json = await connRes.json()
       setConnections(json.connections ?? [])
+    }
+    if (cfgRes.ok) {
+      setConfigured(await cfgRes.json())
     }
     setLoading(false)
   }
@@ -328,9 +314,28 @@ export default function ConnectionsPage() {
     ))
   }
 
+  function closeModal() {
+    setModal(null)
+    setModalError('')
+    setStripeKey('')
+    setShopDomain('')
+  }
+
+  async function handleConnect(providerId: string) {
+    setPageError('')
+    if (providerId === 'stripe') {
+      setModal('stripe')
+    } else if (providerId === 'plaid') {
+      await handleConnectPlaid()
+    } else if (providerId === 'shopify') {
+      setModal('shopify')
+    } else if (providerId === 'paypal') {
+      window.location.href = '/api/connections/paypal'
+    }
+  }
+
   async function handleConnectPlaid() {
-    setPlaidConnecting(true)
-    setPlaidError('')
+    setPageError('')
     try {
       const res = await fetch('/api/connections/plaid', {
         method: 'POST',
@@ -338,7 +343,7 @@ export default function ConnectionsPage() {
         body: JSON.stringify({ action: 'link-token' }),
       })
       const json = await res.json()
-      if (!res.ok) { setPlaidError(json.error ?? 'Failed to create link token'); return }
+      if (!res.ok) { setPageError(json.error ?? 'Failed to create link token'); return }
 
       const link = await loadPlaidLink(json.link_token, async (publicToken: string) => {
         const exchangeRes = await fetch('/api/connections/plaid', {
@@ -350,18 +355,40 @@ export default function ConnectionsPage() {
           await fetchConnections()
         } else {
           const err = await exchangeRes.json()
-          setPlaidError(err.error ?? 'Token exchange failed')
+          setPageError(err.error ?? 'Token exchange failed')
         }
       })
       link.open()
     } catch (err) {
-      setPlaidError(err instanceof Error ? err.message : 'Failed to connect bank')
-    } finally {
-      setPlaidConnecting(false)
+      setPageError(err instanceof Error ? err.message : 'Failed to connect bank')
     }
   }
 
-  const configured = PROVIDERS.filter((p) => !p.comingSoon)
+  async function submitStripeConnect() {
+    setModalLoading(true)
+    setModalError('')
+    try {
+      const res = await fetch('/api/connections/stripe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret_key: stripeKey.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setModalError(json.error ?? 'Failed to connect Stripe'); return }
+      closeModal()
+      await fetchConnections()
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
+  function submitShopifyConnect() {
+    const domain = shopDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
+    if (!domain) { setModalError('Enter your Shopify store domain'); return }
+    window.location.href = `/api/connections/shopify?shop=${encodeURIComponent(domain)}`
+  }
+
+  const configuredProviders = PROVIDERS.filter((p) => !p.comingSoon)
   const comingSoon = PROVIDERS.filter((p) => p.comingSoon)
 
   return (
@@ -371,10 +398,10 @@ export default function ConnectionsPage() {
         <p className="text-sm text-gray-500 mt-0.5">Connect your financial data sources to sync transactions automatically</p>
       </div>
 
-      {plaidError && (
+      {pageError && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <p className="text-sm text-red-700">{plaidError}</p>
+          <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+          <p className="text-sm text-red-700">{pageError}</p>
         </div>
       )}
 
@@ -383,14 +410,15 @@ export default function ConnectionsPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            {configured.map((provider) => (
+            {configuredProviders.map((provider) => (
               <ProviderCard
                 key={provider.id}
                 provider={provider}
                 connection={getConnection(provider.id)}
+                configured={configured[provider.id] !== false}
                 onSync={handleSync}
                 onDisconnect={handleDisconnect}
-                onConnectPlaid={handleConnectPlaid}
+                onConnect={handleConnect}
               />
             ))}
           </div>
@@ -402,13 +430,80 @@ export default function ConnectionsPage() {
                 key={provider.id}
                 provider={provider}
                 connection={getConnection(provider.id)}
+                configured={false}
                 onSync={handleSync}
                 onDisconnect={handleDisconnect}
-                onConnectPlaid={handleConnectPlaid}
+                onConnect={handleConnect}
               />
             ))}
           </div>
         </>
+      )}
+
+      {/* Stripe Connect Modal */}
+      {modal === 'stripe' && (
+        <Modal title="Connect Stripe" onClose={closeModal}>
+          <p className="text-sm text-gray-500">
+            Enter your Stripe secret key from your{' '}
+            <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              Stripe Dashboard → API Keys
+            </a>
+            . Use a restricted key with read access for better security.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Secret Key</label>
+            <input
+              type="password"
+              value={stripeKey}
+              onChange={(e) => setStripeKey(e.target.value)}
+              placeholder="sk_live_… or sk_test_…"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoComplete="off"
+            />
+          </div>
+          {modalError && (
+            <p className="text-sm text-red-600 flex items-center gap-1.5">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {modalError}
+            </p>
+          )}
+          <div className="flex gap-3 pt-1">
+            <Button onClick={submitStripeConnect} disabled={modalLoading || !stripeKey.trim()} className="flex-1">
+              {modalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect Stripe'}
+            </Button>
+            <Button variant="outline" onClick={closeModal} disabled={modalLoading}>Cancel</Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Shopify Connect Modal */}
+      {modal === 'shopify' && (
+        <Modal title="Connect Shopify" onClose={closeModal}>
+          <p className="text-sm text-gray-500">
+            Enter your Shopify store domain to begin the authorization flow.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Store Domain</label>
+            <input
+              type="text"
+              value={shopDomain}
+              onChange={(e) => setShopDomain(e.target.value)}
+              placeholder="your-store.myshopify.com"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoComplete="off"
+            />
+          </div>
+          {modalError && (
+            <p className="text-sm text-red-600 flex items-center gap-1.5">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {modalError}
+            </p>
+          )}
+          <div className="flex gap-3 pt-1">
+            <Button onClick={submitShopifyConnect} disabled={!shopDomain.trim()} className="flex-1">
+              Connect Shopify
+            </Button>
+            <Button variant="outline" onClick={closeModal}>Cancel</Button>
+          </div>
+        </Modal>
       )}
     </div>
   )
