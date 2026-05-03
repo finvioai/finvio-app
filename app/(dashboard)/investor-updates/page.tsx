@@ -186,7 +186,7 @@ export default function InvestorUpdatesPage() {
                   Select an update or generate a new one
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  FinPilot will draft it using your live metrics
+                  Finvio will draft it using your live metrics
                 </p>
               </div>
             </div>

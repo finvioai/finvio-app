@@ -83,7 +83,7 @@ export default function SignupPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <span className="text-xl font-bold text-gray-900">FinPilot</span>
+            <span className="text-xl font-bold text-gray-900">Finvio</span>
           </div>
           <p className="text-sm text-gray-500">AI-powered financial intelligence</p>
         </div>

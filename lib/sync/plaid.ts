@@ -9,14 +9,28 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { encrypt, decrypt } from '@/lib/encryption'
 import { categorize } from '@/lib/categorization/rules'
 
-function getPlaidClient() {
-  const env = (process.env.PLAID_ENV ?? 'sandbox') as keyof typeof PlaidEnvironments
+interface PlaidCreds {
+  client_id: string
+  secret: string       // may be pre-encrypted from DB; decrypt before use
+  plaid_env?: 'sandbox' | 'development' | 'production'
+}
+
+function getPlaidClient(creds?: PlaidCreds) {
+  const env = ((creds?.plaid_env ?? process.env.PLAID_ENV ?? 'sandbox')) as keyof typeof PlaidEnvironments
+  const clientId = creds?.client_id ?? process.env.PLAID_CLIENT_ID
+  // creds.secret from DB is stored encrypted; decrypt it
+  let secret: string | undefined
+  if (creds?.secret) {
+    try { secret = decrypt(creds.secret) } catch { secret = creds.secret }
+  } else {
+    secret = process.env.PLAID_SECRET
+  }
   const configuration = new Configuration({
     basePath: PlaidEnvironments[env],
     baseOptions: {
       headers: {
-        'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-        'PLAID-SECRET': process.env.PLAID_SECRET,
+        'PLAID-CLIENT-ID': clientId,
+        'PLAID-SECRET': secret,
       },
     },
   })
@@ -25,11 +39,11 @@ function getPlaidClient() {
 
 // ─── Create link token (called by frontend to initialize Plaid Link) ──────────
 
-export async function createLinkToken(orgId: string, userId: string): Promise<string> {
-  const client = getPlaidClient()
+export async function createLinkToken(orgId: string, userId: string, creds?: PlaidCreds): Promise<string> {
+  const client = getPlaidClient(creds)
   const response = await client.linkTokenCreate({
     user: { client_user_id: userId },
-    client_name: 'FinPilot',
+    client_name: 'Finvio',
     products: [Products.Transactions],
     country_codes: [CountryCode.Us],
     language: 'en',
@@ -42,9 +56,10 @@ export async function createLinkToken(orgId: string, userId: string): Promise<st
 export async function exchangePublicToken(
   orgId: string,
   publicToken: string,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  creds?: PlaidCreds
 ): Promise<string> {
-  const client = getPlaidClient()
+  const client = getPlaidClient(creds)
   const response = await client.itemPublicTokenExchange({ public_token: publicToken })
   const { access_token, item_id } = response.data
 
@@ -98,13 +113,18 @@ export async function syncPlaidTransactions(
   connectionId: string,
   supabase: SupabaseClient
 ): Promise<{ synced: number; skipped: number; error?: string }> {
-  const client = getPlaidClient()
-
   const { data: connection } = await supabase
     .from('connections')
-    .select('encrypted_access_token, sync_cursor, last_synced_at')
+    .select('encrypted_access_token, encrypted_refresh_token, sync_cursor, last_synced_at, metadata')
     .eq('id', connectionId)
     .single()
+
+  const meta = (connection?.metadata ?? {}) as Record<string, string>
+  const storedCreds: PlaidCreds | undefined = connection?.encrypted_refresh_token
+    ? { client_id: meta.plaid_client_id, secret: connection.encrypted_refresh_token, plaid_env: meta.plaid_env as PlaidCreds['plaid_env'] }
+    : undefined
+
+  const client = getPlaidClient(storedCreds)
 
   if (!connection?.encrypted_access_token) {
     return { synced: 0, skipped: 0, error: 'No access token found' }

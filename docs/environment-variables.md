@@ -18,35 +18,45 @@ Copy `.env.local.example` to `.env.local` and fill in all required values before
 
 ## Required — AI (product-provided)
 
-| Variable | Description |
-|---|---|
-| `OPENAI_API_KEY` | OpenAI API key — server-only. Users never see or enter this. |
-| `ANTHROPIC_API_KEY` | Anthropic API key — server-only. Users never see or enter this. |
-
-## Optional — Stripe
+AI keys are provided by the platform — users do not enter them. The AI model is fixed server-side; there is no user-facing model picker.
 
 | Variable | Description |
 |---|---|
-| `STRIPE_SECRET_KEY` | Stripe secret key (`sk_live_…` or `sk_test_…`) |
+| `OPENAI_API_KEY` | OpenAI API key — server-only. Never exposed to users. |
+| `ANTHROPIC_API_KEY` | Anthropic API key — server-only. Never exposed to users. |
+
+## Optional — Stripe (server fallback / webhooks)
+
+> **Note:** Individual users connect Stripe via the UI by entering their own secret key. These env vars are only needed for cron-based sync and webhook verification, not for the per-user connection flow.
+
+| Variable | Description |
+|---|---|
+| `STRIPE_SECRET_KEY` | Fallback Stripe secret key for cron jobs / webhooks |
 | `STRIPE_WEBHOOK_SECRET` | Webhook endpoint signing secret (`whsec_…`) from Stripe dashboard |
 
-## Optional — Plaid
+## Optional — Plaid (platform credentials required)
+
+> Plaid requires you to register a developer app at [plaid.com](https://plaid.com) and obtain platform credentials. These are shared across all users — individual users do not provide their own Plaid keys.
 
 | Variable | Description |
 |---|---|
-| `PLAID_CLIENT_ID` | Plaid client ID |
+| `PLAID_CLIENT_ID` | Plaid client ID from your Plaid developer dashboard |
 | `PLAID_SECRET` | Plaid secret (sandbox or production) |
 | `PLAID_ENV` | `sandbox` \| `development` \| `production` (default: `sandbox`) |
 
-## Optional — Shopify
+## Optional — Shopify (platform OAuth app required)
+
+> Requires creating a Shopify app in the [Shopify Partner Dashboard](https://partners.shopify.com). The Connections page shows a setup notice if these are missing.
 
 | Variable | Description |
 |---|---|
-| `SHOPIFY_CLIENT_ID` | Shopify app client ID |
-| `SHOPIFY_CLIENT_SECRET` | Shopify app client secret |
+| `SHOPIFY_API_KEY` | Shopify app client ID |
+| `SHOPIFY_API_SECRET` | Shopify app client secret |
 | `SHOPIFY_REDIRECT_URI` | OAuth callback URL (`https://yourdomain.com/api/connections/shopify/callback`) |
 
-## Optional — PayPal
+## Optional — PayPal (platform OAuth app required)
+
+> Requires creating an app in the [PayPal Developer Portal](https://developer.paypal.com). The Connections page shows a setup notice if these are missing.
 
 | Variable | Description |
 |---|---|
@@ -54,6 +64,26 @@ Copy `.env.local.example` to `.env.local` and fill in all required values before
 | `PAYPAL_CLIENT_SECRET` | PayPal app client secret |
 | `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` or `https://api-m.paypal.com` |
 | `PAYPAL_REDIRECT_URI` | OAuth callback URL |
+
+## Required — QuickBooks (platform OAuth app)
+
+> Register a QuickBooks app at [developer.intuit.com](https://developer.intuit.com). Each Finvio user then authorizes their own QuickBooks company through this one platform app. The redirect URI must be registered in the app settings.
+
+| Variable | Description |
+|---|---|
+| `QB_CLIENT_ID` | QuickBooks app client ID from developer.intuit.com |
+| `QB_CLIENT_SECRET` | QuickBooks app client secret |
+| `QB_ENVIRONMENT` | `sandbox` (default) or `production` — controls which QB API endpoint is used |
+
+**Redirect URI to register in QuickBooks developer portal:**
+```
+https://yourdomain.com/api/connections/quickbooks/callback
+```
+
+**Required OAuth scopes:**
+```
+com.intuit.quickbooks.accounting
+```
 
 ## Required — Vercel Cron
 
@@ -65,4 +95,4 @@ Copy `.env.local.example` to `.env.local` and fill in all required values before
 
 | Variable | Description |
 |---|---|
-| `NEXT_PUBLIC_APP_URL` | Public base URL (e.g. `https://app.finpilot.com`) — used for OAuth redirect URIs |
+| `NEXT_PUBLIC_APP_URL` | Public base URL (e.g. `https://app.finvio.ai`) — used for OAuth redirect URIs |

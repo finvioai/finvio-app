@@ -27,7 +27,7 @@ Each fulfilled order creates an income transaction:
 
 ## Data mapping
 
-| Shopify field | FinPilot field |
+| Shopify field | Finvio field |
 |---|---|
 | `order.id` | `source_ref_id` |
 | `order.total_price` | `amount` |
@@ -35,4 +35,4 @@ Each fulfilled order creates an income transaction:
 | `order.financial_status === 'paid'` | Only synced if paid |
 | `order.customer.email` | `vendor` (customer email) |
 
-Refunded orders: FinPilot checks `order.refunds` — if a refund exists, a corresponding expense transaction is created.
+Refunded orders: Finvio checks `order.refunds` — if a refund exists, a corresponding expense transaction is created.

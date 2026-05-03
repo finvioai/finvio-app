@@ -42,7 +42,7 @@ async function checkRateLimit(userId: string): Promise<boolean> {
 // ─── system prompt builder ───────────────────────────────────────────────────
 
 function buildSystemPrompt(context: Record<string, unknown>): string {
-  return `You are FinPilot, an AI financial advisor for startups and small businesses.
+  return `You are Finvio, an AI financial advisor for startups and small businesses.
 You have access to the following verified financial data for the company:
 
 ${JSON.stringify(context, null, 2)}

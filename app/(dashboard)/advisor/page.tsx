@@ -5,7 +5,7 @@ import { Send, Loader2, Bot, AlertTriangle, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationCard } from '@/components/chat/ConfirmationCard'
-import { LLM_MODELS, type PendingAction } from '@/types'
+import type { PendingAction } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -104,7 +104,6 @@ export default function AdvisorPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [sessionId, setSessionId] = useState<string | undefined>()
-  const [selectedModel, setSelectedModel] = useState('gpt-4o-mini')
   const [dataWarning, setDataWarning] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -117,9 +116,6 @@ export default function AdvisorPage() {
     if (!text.trim() || loading) return
     setInput('')
 
-    const model = LLM_MODELS.find((m) => m.id === selectedModel)
-    const provider = model?.provider ?? 'openai'
-
     const userMsg: Message = { id: uid(), role: 'user', content: text }
     setMessages((prev) => [...prev, userMsg])
     setLoading(true)
@@ -129,7 +125,7 @@ export default function AdvisorPage() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, sessionId, provider, model: selectedModel }),
+        body: JSON.stringify({ message: text, sessionId }),
       })
 
       const data = await res.json()
@@ -197,15 +193,7 @@ export default function AdvisorPage() {
             <p className="text-xs text-gray-500">Powered by real financial data, not guesses</p>
           </div>
         </div>
-        <select
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-          className="text-xs border border-gray-200 rounded-md px-2 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {LLM_MODELS.map((m) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
-          ))}
-        </select>
+        <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">AI Powered</span>
       </div>
 
       {/* Data warning banner */}
