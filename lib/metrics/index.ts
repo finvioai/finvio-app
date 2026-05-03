@@ -175,16 +175,16 @@ export async function getMRRTrend(
   orgId: string,
   months = 6
 ): Promise<MRRTrend[]> {
-  const results: MRRTrend[] = []
-
-  for (let i = months - 1; i >= 0; i--) {
-    const d = monthsAgo(i)
-    const month = isoMonth(d)
-    const { mrr } = await getMRR(orgId, month)
-    results.push({ month, mrr, arr: mrr * 12 })
-  }
-
-  return results
+  // Build month strings oldest-first, then fetch all in parallel
+  const monthStrings = Array.from({ length: months }, (_, i) =>
+    isoMonth(monthsAgo(months - 1 - i))
+  )
+  return Promise.all(
+    monthStrings.map(async (month) => {
+      const { mrr } = await getMRR(orgId, month)
+      return { month, mrr, arr: mrr * 12 }
+    })
+  )
 }
 
 // ─── P&L ─────────────────────────────────────────────────────────────────────
@@ -403,31 +403,31 @@ export async function getDataCompleteness(orgId: string): Promise<DataCompletene
 // ─── Dashboard aggregate ─────────────────────────────────────────────────────
 
 export async function getDashboardMetrics(orgId: string): Promise<DashboardMetrics> {
+  // Fetch only leaf data sources — derived values (arr, netBurn, runway) are
+  // computed inline to avoid re-querying the DB through getARR/getNetBurn/getRunway.
+  // getChurnRate is moved into the Promise.all instead of running sequentially after.
   const [
     { mrr, warnings: w1 },
-    { arr, warnings: w2 },
     { cash: cashBalance, warnings: w3 },
     { burnRate, warnings: w4 },
-    { netBurn, warnings: w5 },
-    { runway, warnings: w6 },
     activeCustomers,
     mrrTrend,
     dataCompleteness,
+    { churnRate },
   ] = await Promise.all([
     getMRR(orgId),
-    getARR(orgId),
     getCashBalance(orgId),
     getBurnRate(orgId),
-    getNetBurn(orgId),
-    getRunway(orgId),
     getActiveCustomers(orgId),
     getMRRTrend(orgId, 6),
     getDataCompleteness(orgId),
+    getChurnRate(orgId, startOfMonth(new Date())),
   ])
 
-  const { churnRate } = await getChurnRate(orgId, startOfMonth(new Date()))
-
-  const allWarnings = [...new Set([...w1, ...w2, ...w3, ...w4, ...w5, ...w6])]
+  const arr = mrr * 12
+  const netBurn = burnRate - mrr
+  const runway: number | 'infinite' =
+    netBurn <= 0 ? 'infinite' : cashBalance <= 0 ? 0 : Math.floor(cashBalance / netBurn)
 
   return {
     mrr,
@@ -440,6 +440,6 @@ export async function getDashboardMetrics(orgId: string): Promise<DashboardMetri
     churnRate,
     mrrTrend,
     dataCompleteness,
-    dataWarnings: allWarnings,
+    dataWarnings: [...new Set([...w1, ...w3, ...w4])],
   }
 }

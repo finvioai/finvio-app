@@ -31,5 +31,8 @@ export async function GET(request: Request) {
     getPnL(member.org_id, prevMonth),
   ])
 
-  return NextResponse.json({ current, previous })
+  return NextResponse.json(
+    { current, previous },
+    { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' } }
+  )
 }

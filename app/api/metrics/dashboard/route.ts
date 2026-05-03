@@ -38,10 +38,13 @@ export async function GET() {
       .lt('due_date', today),
   ])
 
-  return NextResponse.json({
-    ...metrics,
-    recentTransactions: recentTxns.data ?? [],
-    uncategorizedCount: uncategorized.count ?? 0,
-    overdueInvoices: overdueInvoices.data ?? [],
-  })
+  return NextResponse.json(
+    {
+      ...metrics,
+      recentTransactions: recentTxns.data ?? [],
+      uncategorizedCount: uncategorized.count ?? 0,
+      overdueInvoices: overdueInvoices.data ?? [],
+    },
+    { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' } }
+  )
 }

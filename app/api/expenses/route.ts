@@ -41,7 +41,10 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ expenses: data ?? [], count: data?.length ?? 0 })
+  return NextResponse.json(
+    { expenses: data ?? [], count: data?.length ?? 0 },
+    { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=60' } }
+  )
 }
 
 // ─── POST /api/expenses ───────────────────────────────────────────────────────

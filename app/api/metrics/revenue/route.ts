@@ -45,13 +45,8 @@ export async function GET() {
     bySource[src] = (bySource[src] ?? 0) + (t.amount ?? 0)
   }
 
-  return NextResponse.json({
-    mrrTrend,
-    mrr,
-    arr,
-    activeCustomers,
-    churnRate,
-    bySource,
-    customers: customers.data ?? [],
-  })
+  return NextResponse.json(
+    { mrrTrend, mrr, arr, activeCustomers, churnRate, bySource, customers: customers.data ?? [] },
+    { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' } }
+  )
 }

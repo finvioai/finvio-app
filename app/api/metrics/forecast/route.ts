@@ -26,10 +26,8 @@ export async function GET(request: Request) {
     getCashBalance(orgId),
   ])
 
-  return NextResponse.json({
-    forecast: forecastData,
-    currentMRR: mrr,
-    currentBurnRate: burnRate,
-    currentCash: cash,
-  })
+  return NextResponse.json(
+    { forecast: forecastData, currentMRR: mrr, currentBurnRate: burnRate, currentCash: cash },
+    { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' } }
+  )
 }
