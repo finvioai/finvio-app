@@ -14,7 +14,7 @@ import {
   SheetFooter,
   SheetClose,
 } from '@/components/ui/sheet'
-import { INCOME_CATEGORIES } from '@/types'
+import { INCOME_CATEGORIES, RECURRENCE_OPTIONS } from '@/types'
 
 interface AddIncomeModalProps {
   open: boolean
@@ -31,13 +31,14 @@ export function AddIncomeModal({ open, onOpenChange, onSuccess }: AddIncomeModal
     description: '',
     amount: '',
     category: '',
+    recurrence: '',
     date: today,
     source: '',
     notes: '',
   })
 
   function reset() {
-    setForm({ description: '', amount: '', category: '', date: today, source: '', notes: '' })
+    setForm({ description: '', amount: '', category: '', recurrence: '', date: today, source: '', notes: '' })
     setError('')
   }
 
@@ -60,6 +61,7 @@ export function AddIncomeModal({ open, onOpenChange, onSuccess }: AddIncomeModal
           description: form.description.trim(),
           amount,
           category: form.category || undefined,
+          recurrence: form.recurrence || undefined,
           date: form.date,
           notes: [form.source.trim(), form.notes.trim()].filter(Boolean).join(' — ') || undefined,
         }),
@@ -135,6 +137,22 @@ export function AddIncomeModal({ open, onOpenChange, onSuccess }: AddIncomeModal
             {!form.category && (
               <p className="text-xs text-gray-500">Leave blank to auto-categorize.</p>
             )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="inc-recurrence">Recurrence</Label>
+            <select
+              id="inc-recurrence"
+              value={form.recurrence}
+              onChange={(e) => handleChange('recurrence', e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="">Not specified</option>
+              {RECURRENCE_OPTIONS.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500">Affects how this income is counted in MRR calculations.</p>
           </div>
 
           <div className="space-y-1.5">

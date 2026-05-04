@@ -14,7 +14,7 @@ import {
   SheetFooter,
   SheetClose,
 } from '@/components/ui/sheet'
-import { EXPENSE_CATEGORIES } from '@/types'
+import { EXPENSE_CATEGORIES, RECURRENCE_OPTIONS } from '@/types'
 
 interface AddExpenseModalProps {
   open: boolean
@@ -31,13 +31,14 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
     description: '',
     amount: '',
     category: '',
+    recurrence: '',
     date: today,
     vendor: '',
     notes: '',
   })
 
   function reset() {
-    setForm({ description: '', amount: '', category: '', date: today, vendor: '', notes: '' })
+    setForm({ description: '', amount: '', category: '', recurrence: '', date: today, vendor: '', notes: '' })
     setError('')
   }
 
@@ -60,6 +61,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
           description: form.description.trim(),
           amount,
           category: form.category || undefined,
+          recurrence: form.recurrence || undefined,
           date: form.date,
           vendor: form.vendor.trim() || undefined,
           notes: form.notes.trim() || undefined,
@@ -136,6 +138,22 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
             {!form.category && (
               <p className="text-xs text-gray-500">Leave blank to auto-categorize.</p>
             )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="exp-recurrence">Recurrence</Label>
+            <select
+              id="exp-recurrence"
+              value={form.recurrence}
+              onChange={(e) => handleChange('recurrence', e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="">Not specified (treated as monthly)</option>
+              {RECURRENCE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500">Helps calculate accurate monthly burn rate.</p>
           </div>
 
           <div className="space-y-1.5">

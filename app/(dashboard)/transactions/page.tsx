@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AddExpenseModal } from '@/components/modals/AddExpenseModal'
 import { AddIncomeModal } from '@/components/modals/AddIncomeModal'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/types'
-import type { Transaction } from '@/types'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, RECURRENCE_OPTIONS } from '@/types'
+import type { Transaction, Project } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -30,15 +30,20 @@ const confidenceBadge = {
 
 function ReviewRow({
   txn,
+  projects,
   onCategoryChange,
   onMarkReviewed,
+  onProjectChange,
 }: {
   txn: Transaction
+  projects: Project[]
   onCategoryChange: (id: string, category: string) => Promise<void>
   onMarkReviewed: (id: string) => Promise<void>
+  onProjectChange: (id: string, projectId: string | null) => Promise<void>
 }) {
   const [saving, setSaving] = useState(false)
   const categories = txn.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+  const activeProjects = projects.filter((p) => p.status === 'active')
 
   async function handleCategory(e: React.ChangeEvent<HTMLSelectElement>) {
     setSaving(true)
@@ -52,9 +57,15 @@ function ReviewRow({
     setSaving(false)
   }
 
+  async function handleProject(e: React.ChangeEvent<HTMLSelectElement>) {
+    setSaving(true)
+    await onProjectChange(txn.id, e.target.value || null)
+    setSaving(false)
+  }
+
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-      <div className="flex items-start gap-3 flex-1 min-w-0">
+    <div className="flex flex-col gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+      <div className="flex items-start gap-3">
         <span className={cn('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium',
           txn.type === 'expense' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')}>
           {txn.type === 'expense' ? '−' : '+'}
@@ -74,7 +85,7 @@ function ReviewRow({
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2 sm:shrink-0">
+      <div className="flex flex-wrap items-center gap-2">
         <select
           value={txn.category ?? ''}
           onChange={handleCategory}
@@ -84,12 +95,23 @@ function ReviewRow({
           <option value="">— pick category —</option>
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
+        {activeProjects.length > 0 && (
+          <select
+            value={(txn as Transaction & { project_id?: string | null }).project_id ?? ''}
+            onChange={handleProject}
+            disabled={saving}
+            className="h-8 rounded-md border border-gray-300 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+          >
+            <option value="">No project</option>
+            {activeProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        )}
         <Button
           size="sm"
           variant="outline"
           onClick={handleReviewed}
           disabled={saving || !txn.category}
-          className="h-8 gap-1 text-xs"
+          className="h-8 gap-1 text-xs ml-auto"
         >
           {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
           Done
@@ -103,6 +125,7 @@ function ReviewRow({
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all')
   const [showExpenseModal, setShowExpenseModal] = useState(false)
@@ -113,10 +136,17 @@ export default function TransactionsPage() {
     try {
       const params = new URLSearchParams({ limit: '200' })
       if (typeFilter !== 'all') params.set('type', typeFilter)
-      const res = await fetch(`/api/transactions?${params}`)
-      if (res.ok) {
-        const data = await res.json()
+      const [txnRes, projRes] = await Promise.all([
+        fetch(`/api/transactions?${params}`),
+        fetch('/api/projects'),
+      ])
+      if (txnRes.ok) {
+        const data = await txnRes.json()
         setTransactions(data.transactions ?? [])
+      }
+      if (projRes.ok) {
+        const data = await projRes.json()
+        setProjects(data.projects ?? [])
       }
     } finally {
       setLoading(false)
@@ -149,11 +179,37 @@ export default function TransactionsPage() {
     }
   }
 
+  async function handleProjectChange(id: string, projectId: string | null) {
+    const res = await fetch('/api/transactions', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, project_id: projectId }),
+    })
+    if (res.ok) {
+      const { transaction } = await res.json()
+      setTransactions((prev) => prev.map((t) => t.id === id ? transaction : t))
+    }
+  }
+
+  async function handleRecurrenceChange(id: string, recurrence: string | null) {
+    const res = await fetch('/api/transactions', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, recurrence }),
+    })
+    if (res.ok) {
+      const { transaction } = await res.json()
+      setTransactions((prev) => prev.map((t) => t.id === id ? transaction : t))
+    }
+  }
+
   const unreviewed = transactions.filter((t) => !t.is_reviewed)
   const reviewed = transactions.filter((t) => t.is_reviewed)
 
   const totalIncome = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const totalExpenses = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+
+  const projectMap = Object.fromEntries(projects.map((p) => [p.id, p.name]))
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
@@ -218,8 +274,10 @@ export default function TransactionsPage() {
               <ReviewRow
                 key={txn.id}
                 txn={txn}
+                projects={projects}
                 onCategoryChange={handleCategoryChange}
                 onMarkReviewed={handleMarkReviewed}
+                onProjectChange={handleProjectChange}
               />
             ))}
           </div>
@@ -232,7 +290,6 @@ export default function TransactionsPage() {
           <h2 className="text-sm font-semibold text-gray-900">
             All Transactions {reviewed.length > 0 && `(${reviewed.length})`}
           </h2>
-          {/* Type filter */}
           <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
             {(['all', 'income', 'expense'] as const).map((f) => (
               <button
@@ -279,13 +336,23 @@ export default function TransactionsPage() {
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Recurrence</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {reviewed.map((txn) => (
-                  <TransactionRow key={txn.id} txn={txn} onCategoryChange={handleCategoryChange} />
+                  <TransactionRow
+                    key={txn.id}
+                    txn={txn}
+                    projects={projects}
+                    projectMap={projectMap}
+                    onCategoryChange={handleCategoryChange}
+                    onProjectChange={handleProjectChange}
+                    onRecurrenceChange={handleRecurrenceChange}
+                  />
                 ))}
               </tbody>
             </table>
@@ -312,17 +379,39 @@ export default function TransactionsPage() {
 
 function TransactionRow({
   txn,
+  projects,
+  projectMap,
   onCategoryChange,
+  onProjectChange,
+  onRecurrenceChange,
 }: {
   txn: Transaction
+  projects: Project[]
+  projectMap: Record<string, string>
   onCategoryChange: (id: string, category: string) => Promise<void>
+  onProjectChange: (id: string, projectId: string | null) => Promise<void>
+  onRecurrenceChange: (id: string, recurrence: string | null) => Promise<void>
 }) {
   const [saving, setSaving] = useState(false)
   const categories = txn.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+  const activeProjects = projects.filter((p) => p.status === 'active')
+  const txnWithProject = txn as Transaction & { project_id?: string | null }
 
   async function handleCategory(e: React.ChangeEvent<HTMLSelectElement>) {
     setSaving(true)
     await onCategoryChange(txn.id, e.target.value)
+    setSaving(false)
+  }
+
+  async function handleProject(e: React.ChangeEvent<HTMLSelectElement>) {
+    setSaving(true)
+    await onProjectChange(txn.id, e.target.value || null)
+    setSaving(false)
+  }
+
+  async function handleRecurrence(e: React.ChangeEvent<HTMLSelectElement>) {
+    setSaving(true)
+    await onRecurrenceChange(txn.id, e.target.value || null)
     setSaving(false)
   }
 
@@ -343,6 +432,36 @@ function TransactionRow({
           {!txn.category && <option value="">Uncategorized</option>}
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
+      </td>
+      <td className="px-4 py-3">
+        <select
+          value={txn.recurrence ?? ''}
+          onChange={handleRecurrence}
+          disabled={saving}
+          className="h-7 rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 max-w-[120px]"
+        >
+          <option value="">Not set</option>
+          {RECURRENCE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </td>
+      <td className="px-4 py-3">
+        {activeProjects.length > 0 ? (
+          <select
+            value={txnWithProject.project_id ?? ''}
+            onChange={handleProject}
+            disabled={saving}
+            className="h-7 rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 max-w-[140px]"
+          >
+            <option value="">—</option>
+            {activeProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        ) : txnWithProject.project_id ? (
+          <span className="text-xs text-gray-600">{projectMap[txnWithProject.project_id] ?? '—'}</span>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
       </td>
       <td className="px-4 py-3">
         <Badge variant="secondary" className="text-xs capitalize">

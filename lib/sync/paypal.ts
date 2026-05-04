@@ -121,7 +121,7 @@ export async function syncPayPalTransactions(
         const type = isIncome ? 'income' : 'expense'
         const description = info.transaction_note ?? info.custom_field ?? 'PayPal transaction'
         const date = info.transaction_initiation_date.split('T')[0]
-        const { category, confidence, method } = await categorize(description, type, orgId)
+        const { category, confidence, method, revenue_type } = await categorize(description, type, orgId)
 
         await supabase.from('transactions').insert({
           org_id: orgId,
@@ -132,6 +132,7 @@ export async function syncPayPalTransactions(
           category,
           category_confidence: confidence,
           category_method: method,
+          revenue_type: revenue_type ?? null,
           source: 'paypal',
           source_ref_id: refId,
           currency: info.transaction_amount.currency_code.toLowerCase(),

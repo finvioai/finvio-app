@@ -20,6 +20,7 @@ import {
   Menu,
   X,
   ArrowLeftRight,
+  BookOpen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -39,6 +40,7 @@ const navItems = [
   { href: '/investor-updates', label: 'Investor Updates', icon: Mail },
   { href: '/connections', label: 'Connections', icon: Plug },
   { href: '/import', label: 'Import Data', icon: Upload },
+  { href: '/glossary', label: 'Glossary', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 

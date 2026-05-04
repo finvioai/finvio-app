@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getForecast, getMRR, getBurnRate, getCashBalance } from '@/lib/metrics'
+import {
+  getForecast, getHistoricalForecast, getMRR, getAvgMonthlyRevenue,
+  getBurnRate, getCashBalance, inferBusinessModel,
+} from '@/lib/metrics'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -19,15 +22,30 @@ export async function GET(request: Request) {
   if (!member?.org_id) return NextResponse.json({ error: 'Org not found' }, { status: 404 })
 
   const orgId = member.org_id
-  const [forecastData, { mrr }, { burnRate }, { cash }] = await Promise.all([
-    getForecast(orgId, growthRate, months),
-    getMRR(orgId),
-    getBurnRate(orgId),
-    getCashBalance(orgId),
-  ])
+
+  const [{ model: businessModel }, { mrr }, { avg: avgMonthlyRevenue }, { burnRate }, { cash }] =
+    await Promise.all([
+      inferBusinessModel(orgId),
+      getMRR(orgId),
+      getAvgMonthlyRevenue(orgId, 3),
+      getBurnRate(orgId),
+      getCashBalance(orgId),
+    ])
+
+  // SaaS uses MRR-based projection; SMB/project use historical-average projection
+  const forecastData = businessModel === 'saas'
+    ? await getForecast(orgId, growthRate, months)
+    : await getHistoricalForecast(orgId, months)
 
   return NextResponse.json(
-    { forecast: forecastData, currentMRR: mrr, currentBurnRate: burnRate, currentCash: cash },
-    { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' } }
+    {
+      forecast: forecastData,
+      businessModel,
+      currentMRR: mrr,
+      avgMonthlyRevenue,
+      currentBurnRate: burnRate,
+      currentCash: cash,
+    },
+    { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120' } }
   )
 }

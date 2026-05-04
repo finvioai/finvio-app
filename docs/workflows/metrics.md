@@ -18,14 +18,19 @@ WHERE org_id = ? AND status = 'active'
 - Annual subscription → `price.unit_amount / 1200`
 
 **Priority 2 — Fallback to income transactions:**
-If no subscriptions exist, sums all income transactions for the given month:
+If no subscriptions exist, sums income transactions for the month — with recurrence-aware normalisation:
+- `one_time` income is **excluded** (a one-off payment is not recurring revenue)
+- `annual` income is normalised: `amount ÷ 12`
+- `quarterly` income is normalised: `amount ÷ 3`
+- `monthly` and untagged (`null`) income is included at full amount
+
 ```sql
-SELECT SUM(amount) FROM transactions
-WHERE org_id = ? AND type = 'income'
+SELECT amount, recurrence FROM transactions
+WHERE org_id = ? AND type = 'income' AND recurrence != 'one_time'
   AND date >= first_of_month AND date <= last_of_month
 ```
 
-The fallback is less accurate (includes one-off payments) but ensures a number is always available even without Stripe connected.
+The fallback is still an estimate (non-subscription income may inflate MRR even when tagged monthly), but tagging income correctly makes it significantly more accurate. A warning is always shown when the fallback is in use.
 
 ---
 
@@ -43,17 +48,44 @@ Simple multiplication. No separate query.
 
 ## Burn Rate
 
-**Function:** `getBurnRate(orgId, months = 3)`
+**Function:** `getBurnRate(orgId)`
 
-Average monthly expenses over the last N months:
+Burn rate is the normalised monthly cost of running the business. It accounts for how often each expense actually recurs — a $1,200 annual AWS bill costs $100/month, not $1,200/month.
 
-```sql
-SELECT SUM(amount) FROM transactions
-WHERE org_id = ? AND type = 'expense'
-  AND date >= N months ago
+### Recurrence classification
+
+Every expense transaction has an optional `recurrence` field set at the time of entry (via AI chat extraction or the manual expense form):
+
+| Value | Meaning | How counted |
+|-------|---------|-------------|
+| `monthly` | Paid every month (SaaS, salaries, rent) | SUM ÷ distinct months with data (last 3 months) |
+| `quarterly` | Paid every quarter (audits, quarterly fees) | avg quarterly spend ÷ 3 (last 12 months) |
+| `annual` | Paid once a year (annual licences, insurance) | avg annual spend ÷ 12 (last 12 months) |
+| `one_time` | Non-recurring (equipment, one-off contractor) | **Excluded** — shown as dashboard warning |
+| `null` | Not tagged | **Excluded** — warning lists untagged expenses for the user to fix |
+
+### Formula
+
+```
+burn_rate =
+    SUM(monthly, last 3 months) ÷ count(distinct months with ≥1 monthly expense)
+  + avg(quarterly spend per quarter, last 12 months) ÷ 3
+  + avg(annual spend per year, last 12 months) ÷ 12
 ```
 
-Result divided by N. Using 3-month average smooths out one-time large expenses (hardware purchase, annual software payment) that would make a single-month burn rate misleading.
+**Why is `null` now excluded instead of assumed monthly?**
+Assuming an untagged expense recurs monthly is a guess that can significantly overstate burn rate. "Lunch" and "hosting" without a tag could be one-time, weekly, or annual — the system has no basis to decide. Excluding them and surfacing a warning gives founders accurate data and a prompt to fix the tag, rather than a silently wrong number.
+
+**Why "divide by distinct months" instead of always ÷ 3?**
+A fixed ÷ 3 divisor underestimates new subscriptions. A $20/month subscription added this month has only one data point — dividing by 3 would give $6.67. Dividing by the number of months that had the expense counts it at its full value immediately.
+
+One-time expenses and untagged expenses are both excluded and reported separately so founders can see the spend without it distorting the recurring cost figure.
+
+**Example:** $2,000/month payroll (monthly), $1,200/year AWS (annual), $800 laptop (one_time), $45 hosting (null/untagged).
+- Monthly component: $6,000 ÷ 3 = $2,000
+- Annual component: avg($1,200) ÷ 12 = $100
+- One-time + untagged: excluded, each shown in a warning
+- **Burn rate: $2,100/month**
 
 ---
 
@@ -212,6 +244,134 @@ These warnings appear in the AI chat data warning banner and are included in the
 
 ---
 
+## Business Model Inference
+
+**Function:** `inferBusinessModel(orgId)`
+
+Returns `{ model: BusinessModel, hasRecurring, hasProject, hasOneTime }`. Not stored in the DB — computed fresh from existing data each call.
+
+**Signal hierarchy:**
+
+1. **Active subscriptions** — query `subscriptions` table for `status = 'active'`. Even 1 active subscription is a strong SaaS signal.
+2. **`revenue_type` distribution** — query income transactions from the last 90 days and compute ratios.
+3. **Category fallback** — if `revenue_type` is null (legacy data), map `category` to a type using `CATEGORY_TO_REVENUE_TYPE`.
+
+**Thresholds:**
+
+| Condition | Model |
+|-----------|-------|
+| Active subscriptions exist OR `>30%` recurring ratio | `'saas'` |
+| `>25%` project ratio AND recurring < 30% | `'project_based'` |
+| Both recurring ≥ 20% AND project ≥ 20% | `'mixed'` |
+| None of the above | `'smb'` |
+
+**Default:** New orgs with no income data return `{ model: 'saas', ... }` — preserves current behavior for fresh accounts.
+
+Used by: `getDashboardMetrics()`, `GET /api/metrics/forecast`, `fetchContextForIntent()` in the AI chat route.
+
+---
+
+## Total Revenue
+
+**Function:** `getTotalRevenue(orgId, month?)`
+
+```sql
+SELECT SUM(amount) FROM transactions
+WHERE org_id = ? AND type = 'income'
+  AND date >= first_of_month AND date <= last_of_month
+```
+
+Defaults to the current calendar month. Returns `{ revenue, warnings }`. Warnings include "No income transactions found for this period" if the result is zero.
+
+Unlike `getMRR()`, this includes all income regardless of `revenue_type` — one-time payments, project invoices, and recurring revenue are all summed together.
+
+---
+
+## Gross Profit
+
+**Function:** `getGrossProfit(orgId, month?)`
+
+```
+grossProfit = totalRevenue - totalExpenses
+```
+
+Both sides are queried for the same month window. Returns `{ profit, warnings }`. `profit` can be negative (a loss).
+
+---
+
+## Average Monthly Revenue
+
+**Function:** `getAvgMonthlyRevenue(orgId, months = 3)`
+
+Computes total revenue for each of the last N complete calendar months, then averages — dividing only by the number of months that actually had revenue:
+
+```
+activeMonths = count(months where revenue > 0)
+avg = SUM(monthlyRevenue[0..N-1]) / max(activeMonths, 1)
+```
+
+**Why not divide by N?** A business that started this month has two months of zero revenue in the lookback window. Dividing by 3 would report one-third of their real monthly revenue as their "average." Dividing by the count of months that actually had income gives the true average for the period the business has been operating.
+
+Used by the Forecast page as the baseline for non-SaaS businesses (instead of current MRR). Defaults to a 3-month lookback.
+
+---
+
+## Revenue by Type
+
+**Function:** `getRevenueByType(orgId, month?)`
+
+Returns `{ recurring, one_time, project, milestone, unclassified }` — amounts bucketed by `revenue_type`. Transactions with `revenue_type = null` fall into `unclassified`.
+
+Used by:
+- Revenue page "By Type" tab (pie/donut chart)
+- AI chat `query_revenue` intent context
+
+---
+
+## Historical Forecast (Non-SaaS)
+
+**Function:** `getHistoricalForecast(orgId, forecastMonths)`
+
+Unlike `getForecast()` which requires a user-provided MRR growth rate, this function derives the growth rate automatically from historical revenue trends:
+
+1. Fetch total revenue for each of the last 6 complete months
+2. Compute month-over-month growth rates (skipping months where the prior month had 0 revenue)
+3. Average the growth rates → `derivedGrowthRate`
+4. `baseRevenue` = the most recent month with revenue > 0 (avoids starting from $0 if the latest month is empty or just started)
+5. Project forward: `projectedRevenue = baseRevenue × (1 + derivedGrowthRate)^n`
+
+Returns `ForecastMonth[]` with `projectedRevenue` populated (same shape as `getForecast()` output, which sets `projectedMRR`).
+
+Edge cases:
+- Fewer than 2 months of data → uses 0% growth (flat projection)
+- Negative average growth → still projects forward with the negative rate (honest forecast)
+- All months have $0 revenue → `baseRevenue = 0`, flat $0 forecast
+
+Used by the Forecast page when `businessModel !== 'saas'`.
+
+---
+
+## Project Summary
+
+**Function:** `getProjectSummary(orgId)`
+
+Fetches all projects for the org and augments each with financial totals from linked transactions:
+
+```typescript
+{
+  ...project,           // all project fields
+  collected: number,    // SUM(amount) for income transactions with project_id = project.id
+  expenses:  number,    // SUM(amount) for expense transactions
+  outstanding: number | null,  // budget - collected (null if no budget set)
+}
+```
+
+Transactions are linked via `transactions.project_id`. Returns `ProjectSummary[]`.
+
+Used by: AI chat `query_project` intent, Projects page, Dashboard "Active Projects" card (project_based and mixed models).
+
+---
+
 ## Dashboard Aggregation
 
 **Function:** `getDashboardMetrics(orgId)`
@@ -219,8 +379,9 @@ These warnings appear in the AI chat data warning banner and are included in the
 Fetches multiple metrics in parallel (using `Promise.all`) to minimize latency:
 
 ```typescript
-const [mrr, cashBalance, burnRate, activeCustomers, mrrTrend, dataCompleteness, churnRate] =
-  await Promise.all([getMRR, getCashBalance, getBurnRate, getActiveCustomers, getMRRTrend, getDataCompleteness, getChurnRate])
+const [mrr, cashBalance, burnRate, activeCustomers, mrrTrend, dataCompleteness,
+       churnRate, businessModelResult, totalRevenue, grossProfit, avgMonthlyRevenue, revenueByType] =
+  await Promise.all([...])
 ```
 
 Then derives without re-querying:
@@ -229,6 +390,8 @@ const arr = mrr * 12
 const netBurn = burnRate - mrr
 const runway = netBurn > 0 ? Math.floor(cashBalance / netBurn) : 'infinite'
 ```
+
+Returns extended `DashboardMetrics` with all new fields: `businessModel`, `totalRevenue`, `grossProfit`, `avgMonthlyRevenue`, `revenueByType`.
 
 ---
 

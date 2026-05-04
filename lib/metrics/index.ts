@@ -6,6 +6,10 @@ import type {
   ForecastMonth,
   DataCompletenessResult,
   DashboardMetrics,
+  BusinessModel,
+  BusinessModelResult,
+  RevenueByTypeResult,
+  ProjectSummary,
 } from '@/types'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -56,12 +60,16 @@ export async function getMRR(
     return { mrr, warnings }
   }
 
-  // Fallback: income transactions in the month
+  // Fallback: income transactions in the month.
+  // one_time income is excluded — it isn't recurring and shouldn't inflate MRR.
+  // annual income is normalised to monthly (÷12); quarterly to monthly (÷3).
+  // Untagged (null) income is included at full amount for backward compatibility.
   const { data: txns } = await supabase
     .from('transactions')
-    .select('amount')
+    .select('amount, recurrence')
     .eq('org_id', orgId)
     .eq('type', 'income')
+    .neq('recurrence', 'one_time')
     .gte('date', targetMonth)
     .lt('date', nextMonth.toISOString().split('T')[0])
 
@@ -71,7 +79,12 @@ export async function getMRR(
   }
 
   warnings.push('MRR estimated from transactions — connect Stripe for accuracy.')
-  const mrr = txns.reduce((sum, t) => sum + (t.amount ?? 0), 0)
+  const mrr = txns.reduce((sum, t) => {
+    const amount = t.amount ?? 0
+    if (t.recurrence === 'annual') return sum + amount / 12
+    if (t.recurrence === 'quarterly') return sum + amount / 3
+    return sum + amount // monthly or null → full amount
+  }, 0)
   return { mrr, warnings }
 }
 
@@ -83,27 +96,91 @@ export async function getARR(orgId: string): Promise<{ arr: number; warnings: st
 // ─── Burn & Cash ─────────────────────────────────────────────────────────────
 
 export async function getBurnRate(
-  orgId: string,
-  months = 3
+  orgId: string
 ): Promise<{ burnRate: number; warnings: string[] }> {
   const supabase = await createClient()
   const warnings: string[] = []
-  const since = monthsAgo(months).toISOString().split('T')[0]
+
+  // Fetch last 12 months so annual/quarterly expenses are always captured
+  const since12 = monthsAgo(12).toISOString().split('T')[0]
+  const since3  = monthsAgo(3).toISOString().split('T')[0]
 
   const { data: txns } = await supabase
     .from('transactions')
-    .select('amount, date')
+    .select('amount, date, recurrence')
     .eq('org_id', orgId)
     .eq('type', 'expense')
-    .gte('date', since)
+    .gte('date', since12)
 
   if (!txns || txns.length === 0) {
     warnings.push('No expense data found. Add expenses or connect a bank account.')
     return { burnRate: 0, warnings }
   }
 
-  const total = txns.reduce((sum, t) => sum + (t.amount ?? 0), 0)
-  return { burnRate: total / months, warnings }
+  let burnRate = 0
+
+  // monthly → average over distinct months that had expenses.
+  // Untagged (null) expenses are excluded and surfaced as a warning: the system
+  // has no basis to assume they recur monthly, quarterly, annually, or at all.
+  const monthlyExpenses = txns.filter(
+    (t) => t.recurrence === 'monthly'
+  ).filter((t) => t.date >= since3)
+  const monthsWithMonthly = new Set(
+    monthlyExpenses.map((t) => (t.date as string).slice(0, 7))
+  )
+  const monthDivisor = Math.max(monthsWithMonthly.size, 1)
+  burnRate += monthlyExpenses.reduce((s, t) => s + (t.amount ?? 0), 0) / monthDivisor
+
+  // untagged → excluded from burn rate, warn so the user can tag them
+  const untaggedExpenses = txns.filter((t) => !t.recurrence).filter((t) => t.date >= since3)
+  if (untaggedExpenses.length > 0) {
+    warnings.push(
+      `${untaggedExpenses.length} expense${untaggedExpenses.length !== 1 ? 's' : ''} have no recurrence tag and were excluded from burn rate. Tag them on the Transactions or Expenses page to include them.`
+    )
+  }
+
+  // quarterly → normalize per quarter (÷3), averaged across distinct quarters.
+  // A new quarterly sub that appears in only 1 quarter contributes amount÷3, not amount÷12.
+  const quarterly = txns.filter((t) => t.recurrence === 'quarterly')
+  if (quarterly.length > 0) {
+    const toQuarter = (d: string) => {
+      const [yr, mo] = d.split('-')
+      return `${yr}-Q${Math.ceil(parseInt(mo) / 3)}`
+    }
+    const byQuarter = new Map<string, number>()
+    for (const t of quarterly) {
+      const q = toQuarter(t.date as string)
+      byQuarter.set(q, (byQuarter.get(q) ?? 0) + (t.amount ?? 0))
+    }
+    const avgPerQuarter =
+      [...byQuarter.values()].reduce((s, v) => s + v, 0) / byQuarter.size
+    burnRate += avgPerQuarter / 3
+  }
+
+  // annual → normalize per year (÷12), averaged across distinct years.
+  const annual = txns.filter((t) => t.recurrence === 'annual')
+  if (annual.length > 0) {
+    const byYear = new Map<string, number>()
+    for (const t of annual) {
+      const yr = (t.date as string).slice(0, 4)
+      byYear.set(yr, (byYear.get(yr) ?? 0) + (t.amount ?? 0))
+    }
+    const avgPerYear =
+      [...byYear.values()].reduce((s, v) => s + v, 0) / byYear.size
+    burnRate += avgPerYear / 12
+  }
+
+  // one_time → excluded from burn rate (capital/non-recurring spend)
+  const oneTimeTotal = txns
+    .filter((t) => t.recurrence === 'one_time')
+    .reduce((s, t) => s + (t.amount ?? 0), 0)
+  if (oneTimeTotal > 0) {
+    warnings.push(
+      `$${oneTimeTotal.toLocaleString()} in one-time expenses excluded from burn rate.`
+    )
+  }
+
+  return { burnRate: Math.round(burnRate * 100) / 100, warnings }
 }
 
 export async function getCashBalance(orgId: string): Promise<{ cash: number; warnings: string[] }> {
@@ -116,7 +193,7 @@ export async function getCashBalance(orgId: string): Promise<{ cash: number; war
     .select('metadata')
     .eq('org_id', orgId)
     .eq('provider', 'plaid')
-    .eq('status', 'connected')
+    .eq('status', 'active')
     .maybeSingle()
 
   if (conn?.metadata) {
@@ -320,6 +397,7 @@ export async function getForecast(
     results.push({
       month,
       projectedMRR,
+      projectedRevenue: projectedMRR,
       projectedExpenses,
       projectedCash: cash,
       projectedRunway,
@@ -400,12 +478,264 @@ export async function getDataCompleteness(orgId: string): Promise<DataCompletene
   }
 }
 
+// ─── Business Model Inference ────────────────────────────────────────────────
+
+export async function inferBusinessModel(orgId: string): Promise<BusinessModelResult> {
+  const supabase = await createClient()
+
+  // Signal 1: active subscriptions → strong SaaS signal
+  const { count: activeSubs } = await supabase
+    .from('subscriptions')
+    .select('id', { count: 'exact', head: true })
+    .eq('org_id', orgId)
+    .eq('status', 'active')
+
+  // Signal 2: revenue_type distribution over last 90 days
+  const ninetyDaysAgo = new Date()
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+  const sinceDate = ninetyDaysAgo.toISOString().split('T')[0]
+
+  const { data: income } = await supabase
+    .from('transactions')
+    .select('revenue_type, category')
+    .eq('org_id', orgId)
+    .eq('type', 'income')
+    .gte('date', sinceDate)
+
+  const total = income?.length ?? 0
+  const recurringCount = income?.filter(
+    (t) => t.revenue_type === 'recurring' || t.category === 'Subscription Revenue'
+  ).length ?? 0
+  const projectCount = income?.filter(
+    (t) => t.revenue_type === 'project' || t.revenue_type === 'milestone'
+  ).length ?? 0
+
+  const recurringRatio = total > 0 ? recurringCount / total : 0
+  const projectRatio   = total > 0 ? projectCount / total : 0
+
+  const hasRecurring = (activeSubs ?? 0) > 0 || recurringRatio > 0.3
+  const hasProject   = projectRatio > 0.25
+  const hasOneTime   = !hasRecurring && !hasProject && total > 0
+
+  let model: BusinessModel = 'saas'
+  if (hasRecurring && hasProject) model = 'mixed'
+  else if (hasRecurring)          model = 'saas'
+  else if (hasProject)            model = 'project_based'
+  else if (hasOneTime)            model = 'smb'
+
+  return { model, hasRecurring, hasProject, hasOneTime }
+}
+
+// ─── Total Revenue (no subscription assumption) ───────────────────────────────
+
+export async function getTotalRevenue(
+  orgId: string,
+  month?: string
+): Promise<{ revenue: number; warnings: string[] }> {
+  const supabase = await createClient()
+  const warnings: string[] = []
+  const targetMonth = month ?? startOfMonth(new Date())
+  const nextMonth = new Date(targetMonth)
+  nextMonth.setMonth(nextMonth.getMonth() + 1)
+
+  const { data: txns } = await supabase
+    .from('transactions')
+    .select('amount')
+    .eq('org_id', orgId)
+    .eq('type', 'income')
+    .gte('date', targetMonth)
+    .lt('date', nextMonth.toISOString().split('T')[0])
+
+  if (!txns || txns.length === 0) {
+    warnings.push('No revenue data found for this period.')
+    return { revenue: 0, warnings }
+  }
+
+  const revenue = txns.reduce((sum, t) => sum + (t.amount ?? 0), 0)
+  return { revenue, warnings }
+}
+
+// ─── Gross Profit ─────────────────────────────────────────────────────────────
+
+export async function getGrossProfit(
+  orgId: string,
+  month?: string
+): Promise<{ profit: number; warnings: string[] }> {
+  const supabase = await createClient()
+  const warnings: string[] = []
+  const targetMonth = month ?? startOfMonth(new Date())
+  const nextMonth = new Date(targetMonth)
+  nextMonth.setMonth(nextMonth.getMonth() + 1)
+  const nextMonthStr = nextMonth.toISOString().split('T')[0]
+
+  const { data: txns } = await supabase
+    .from('transactions')
+    .select('amount, type')
+    .eq('org_id', orgId)
+    .gte('date', targetMonth)
+    .lt('date', nextMonthStr)
+
+  if (!txns || txns.length === 0) {
+    warnings.push('No transaction data found for this period.')
+    return { profit: 0, warnings }
+  }
+
+  const revenue  = txns.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount ?? 0), 0)
+  const expenses = txns.filter(t => t.type === 'expense').reduce((s, t) => s + (t.amount ?? 0), 0)
+  return { profit: revenue - expenses, warnings }
+}
+
+// ─── Average Monthly Revenue ──────────────────────────────────────────────────
+
+export async function getAvgMonthlyRevenue(
+  orgId: string,
+  months = 3
+): Promise<{ avg: number; warnings: string[] }> {
+  const monthStrings = Array.from({ length: months }, (_, i) =>
+    isoMonth(monthsAgo(months - 1 - i))
+  )
+  const results = await Promise.all(monthStrings.map((m) => getTotalRevenue(orgId, m)))
+  const total = results.reduce((s, r) => s + r.revenue, 0)
+  // Divide only by months that actually had revenue — a brand-new business
+  // shouldn't have its first month's revenue diluted by two zero-revenue months.
+  const activeMonths = results.filter(r => r.revenue > 0).length
+  const divisor = Math.max(activeMonths, 1)
+  const warnings = results.flatMap((r) => r.warnings)
+  return { avg: total / divisor, warnings: [...new Set(warnings)] }
+}
+
+// ─── Revenue By Type ──────────────────────────────────────────────────────────
+
+export async function getRevenueByType(
+  orgId: string,
+  month?: string
+): Promise<RevenueByTypeResult> {
+  const supabase = await createClient()
+  const targetMonth = month ?? startOfMonth(new Date())
+  const nextMonth = new Date(targetMonth)
+  nextMonth.setMonth(nextMonth.getMonth() + 1)
+
+  const { data: txns } = await supabase
+    .from('transactions')
+    .select('amount, revenue_type')
+    .eq('org_id', orgId)
+    .eq('type', 'income')
+    .gte('date', targetMonth)
+    .lt('date', nextMonth.toISOString().split('T')[0])
+
+  const result: RevenueByTypeResult = { recurring: 0, one_time: 0, project: 0, milestone: 0, unclassified: 0 }
+
+  for (const t of txns ?? []) {
+    const amt = t.amount ?? 0
+    const rt = t.revenue_type as keyof RevenueByTypeResult | null
+    if (rt && rt in result) {
+      result[rt] += amt
+    } else {
+      result.unclassified += amt
+    }
+  }
+
+  return result
+}
+
+// ─── Historical Forecast (for SMB / project-based businesses) ─────────────────
+
+export async function getHistoricalForecast(
+  orgId: string,
+  forecastMonths: number
+): Promise<ForecastMonth[]> {
+  // Compute average monthly revenue and growth rate from last 6 months
+  const histMonths = 6
+  const monthStrings = Array.from({ length: histMonths }, (_, i) =>
+    isoMonth(monthsAgo(histMonths - 1 - i))
+  )
+  const revenueByMonth = await Promise.all(monthStrings.map((m) => getTotalRevenue(orgId, m)))
+  const revenues = revenueByMonth.map((r) => r.revenue)
+
+  // Calculate average monthly growth rate
+  const growthRates: number[] = []
+  for (let i = 1; i < revenues.length; i++) {
+    if (revenues[i - 1] > 0) {
+      growthRates.push((revenues[i] - revenues[i - 1]) / revenues[i - 1])
+    }
+  }
+  const avgGrowthRate = growthRates.length > 0
+    ? growthRates.reduce((s, r) => s + r, 0) / growthRates.length
+    : 0
+
+  // Use the most recent month that actually had revenue as the baseline.
+  // Without this a single zero-revenue month at the end (e.g. month just started)
+  // would make the forecast project forward from $0.
+  const baseRevenue = [...revenues].reverse().find(r => r > 0) ?? 0
+  const [{ burnRate }, { cash: currentCash }] = await Promise.all([
+    getBurnRate(orgId),
+    getCashBalance(orgId),
+  ])
+
+  const results: ForecastMonth[] = []
+  let cash = currentCash
+
+  for (let i = 1; i <= forecastMonths; i++) {
+    const d = new Date()
+    d.setMonth(d.getMonth() + i)
+    const month = isoMonth(d)
+    const projectedRevenue = baseRevenue * Math.pow(1 + avgGrowthRate, i)
+    const projectedExpenses = burnRate
+    cash += projectedRevenue - projectedExpenses
+    const netBurn = projectedExpenses - projectedRevenue
+    const projectedRunway: number | 'infinite' =
+      netBurn <= 0 ? 'infinite' : Math.max(0, Math.floor(cash / netBurn))
+
+    results.push({
+      month,
+      projectedMRR: projectedRevenue,
+      projectedRevenue,
+      projectedExpenses,
+      projectedCash: cash,
+      projectedRunway,
+    })
+  }
+
+  return results
+}
+
+// ─── Project Summary ──────────────────────────────────────────────────────────
+
+export async function getProjectSummary(orgId: string): Promise<ProjectSummary[]> {
+  const supabase = await createClient()
+
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false })
+
+  if (!projects || projects.length === 0) return []
+
+  return Promise.all(projects.map(async (project) => {
+    const { data: txns } = await supabase
+      .from('transactions')
+      .select('amount, type')
+      .eq('project_id', project.id)
+
+    const collected = txns?.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount ?? 0), 0) ?? 0
+    const expenses  = txns?.filter(t => t.type === 'expense').reduce((s, t) => s + (t.amount ?? 0), 0) ?? 0
+    const outstanding = project.budget != null ? project.budget - collected : 0
+
+    return {
+      ...project,
+      collected,
+      expenses,
+      outstanding,
+    } as ProjectSummary
+  }))
+}
+
 // ─── Dashboard aggregate ─────────────────────────────────────────────────────
 
 export async function getDashboardMetrics(orgId: string): Promise<DashboardMetrics> {
-  // Fetch only leaf data sources — derived values (arr, netBurn, runway) are
-  // computed inline to avoid re-querying the DB through getARR/getNetBurn/getRunway.
-  // getChurnRate is moved into the Promise.all instead of running sequentially after.
+  const currentMonth = startOfMonth(new Date())
+
   const [
     { mrr, warnings: w1 },
     { cash: cashBalance, warnings: w3 },
@@ -414,6 +744,11 @@ export async function getDashboardMetrics(orgId: string): Promise<DashboardMetri
     mrrTrend,
     dataCompleteness,
     { churnRate },
+    businessModelResult,
+    { revenue: totalRevenue },
+    { profit: grossProfit },
+    { avg: avgMonthlyRevenue },
+    revenueByType,
   ] = await Promise.all([
     getMRR(orgId),
     getCashBalance(orgId),
@@ -421,7 +756,12 @@ export async function getDashboardMetrics(orgId: string): Promise<DashboardMetri
     getActiveCustomers(orgId),
     getMRRTrend(orgId, 6),
     getDataCompleteness(orgId),
-    getChurnRate(orgId, startOfMonth(new Date())),
+    getChurnRate(orgId, currentMonth),
+    inferBusinessModel(orgId),
+    getTotalRevenue(orgId, currentMonth),
+    getGrossProfit(orgId, currentMonth),
+    getAvgMonthlyRevenue(orgId, 3),
+    getRevenueByType(orgId, currentMonth),
   ])
 
   const arr = mrr * 12
@@ -441,5 +781,10 @@ export async function getDashboardMetrics(orgId: string): Promise<DashboardMetri
     mrrTrend,
     dataCompleteness,
     dataWarnings: [...new Set([...w1, ...w3, ...w4])],
+    businessModel: businessModelResult.model,
+    totalRevenue,
+    grossProfit,
+    avgMonthlyRevenue,
+    revenueByType,
   }
 }

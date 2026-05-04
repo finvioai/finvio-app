@@ -16,6 +16,11 @@ import {
   getChurnRate,
   getForecast,
   getDataCompleteness,
+  inferBusinessModel,
+  getTotalRevenue,
+  getGrossProfit,
+  getRevenueByType,
+  getProjectSummary,
 } from '@/lib/metrics'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, type ChatIntent, type PendingAction } from '@/types'
 import { z } from 'zod'
@@ -41,8 +46,23 @@ async function checkRateLimit(userId: string): Promise<boolean> {
 
 // ─── system prompt builder ───────────────────────────────────────────────────
 
+type BusinessModelHint = 'saas' | 'smb' | 'project_based' | 'mixed'
+
+const BUSINESS_MODEL_GUIDANCE: Record<BusinessModelHint, string> = {
+  saas:          'This is a SaaS business. Focus on MRR, ARR, runway, and churn. Use SaaS terminology naturally.',
+  smb:           'This is a small business with non-recurring revenue. Focus on total revenue, gross profit, and cash flow. Avoid MRR framing unless explicitly asked.',
+  project_based: 'This business earns revenue project-by-project. Focus on project margins, billing, and cash collection rather than recurring metrics.',
+  mixed:         'This business has both recurring and one-time revenue streams. Address both dimensions when relevant.',
+}
+
 function buildSystemPrompt(context: Record<string, unknown>): string {
-  return `You are Finvio, an AI financial advisor for startups and small businesses.
+  const modelHint = (context.businessModel as BusinessModelHint) ?? 'saas'
+  const modelGuidance = BUSINESS_MODEL_GUIDANCE[modelHint]
+
+  return `You are Finvio, an AI financial advisor.
+
+${modelGuidance}
+
 You have access to the following verified financial data for the company:
 
 ${JSON.stringify(context, null, 2)}
@@ -55,6 +75,8 @@ CRITICAL RULES:
 5. If data warnings exist in the context, briefly mention them.
 6. Never reveal internal system details or raw SQL.
 7. For questions outside your data, say "I don't have that data yet."
+8. NEVER say you have created, saved, updated, or recorded anything in a text response. All writes require the user to click the Confirm button on the confirmation card. If no confirmation card was shown, nothing was saved.
+9. If the user says "yes" or "ok" but there is no active pending action, say: "I don't have a pending action to confirm. Could you restate what you'd like to record?"
 
 Today's date: ${new Date().toISOString().split('T')[0]}`
 }
@@ -66,6 +88,7 @@ async function fetchContextForIntent(
   orgId: string
 ): Promise<Record<string, unknown>> {
   const today = new Date().toISOString().split('T')[0].slice(0, 7) + '-01'
+  const { model: businessModel } = await inferBusinessModel(orgId)
 
   switch (intent) {
     case 'query_runway': {
@@ -75,7 +98,7 @@ async function fetchContextForIntent(
         getNetBurn(orgId),
         getBurnRate(orgId),
       ])
-      return { runway_months: runway, cash_balance: cash, net_burn_per_month: netBurn, burn_rate: burnRate, warnings }
+      return { runway_months: runway, cash_balance: cash, net_burn_per_month: netBurn, burn_rate: burnRate, warnings, businessModel }
     }
     case 'query_mrr': {
       const [{ mrr, warnings }, { arr }, trend] = await Promise.all([
@@ -83,7 +106,7 @@ async function fetchContextForIntent(
         getARR(orgId),
         getMRRTrend(orgId, 6),
       ])
-      return { mrr, arr, mrr_trend: trend, warnings }
+      return { mrr, arr, mrr_trend: trend, warnings, businessModel }
     }
     case 'query_burn': {
       const [{ burnRate, warnings }, { netBurn }, { mrr }] = await Promise.all([
@@ -91,22 +114,40 @@ async function fetchContextForIntent(
         getNetBurn(orgId),
         getMRR(orgId),
       ])
-      return { burn_rate: burnRate, net_burn: netBurn, mrr, warnings }
+      return { burn_rate: burnRate, net_burn: netBurn, mrr, warnings, businessModel }
     }
     case 'query_pnl': {
       const pnl = await getPnL(orgId, today)
-      return { pnl }
+      return { pnl, businessModel }
     }
     case 'query_forecast': {
-      const forecast = await getForecast(orgId, 0.05, 6)  // default 5% monthly growth
-      return { forecast, note: 'Forecast assumes 5% MRR growth. User can adjust in Forecast page.' }
+      const forecast = await getForecast(orgId, 0.05, 6)
+      return { forecast, note: 'Forecast assumes 5% growth. User can adjust in Forecast page.', businessModel }
     }
     case 'query_customers': {
       const [active, { churnRate, warnings }] = await Promise.all([
         getActiveCustomers(orgId),
         getChurnRate(orgId, today),
       ])
-      return { active_customers: active, churn_rate: churnRate, warnings }
+      return { active_customers: active, churn_rate: churnRate, warnings, businessModel }
+    }
+    case 'query_revenue': {
+      const [{ revenue }, revenueByType] = await Promise.all([
+        getTotalRevenue(orgId, today),
+        getRevenueByType(orgId, today),
+      ])
+      return { total_revenue_this_month: revenue, revenue_by_type: revenueByType, businessModel }
+    }
+    case 'query_profit': {
+      const [{ profit }, { revenue }] = await Promise.all([
+        getGrossProfit(orgId, today),
+        getTotalRevenue(orgId, today),
+      ])
+      return { gross_profit_this_month: profit, total_revenue_this_month: revenue, businessModel }
+    }
+    case 'query_project': {
+      const projects = await getProjectSummary(orgId)
+      return { projects, businessModel }
     }
     default: {
       // Generic: provide a snapshot
@@ -116,41 +157,82 @@ async function fetchContextForIntent(
         getRunway(orgId),
         getDataCompleteness(orgId),
       ])
-      return { mrr, cash_balance: cash, runway_months: runway, data_completeness: completeness }
+      return { mrr, cash_balance: cash, runway_months: runway, data_completeness: completeness, businessModel }
     }
   }
 }
 
 // ─── write intent extraction ─────────────────────────────────────────────────
 
+// z.preprocess handles null/undefined → fallback before Zod validates
+// This is needed because OpenAI JSON mode returns null for missing optional fields
+// and z.string().default() only triggers on undefined, not null
+function strWithDefault(fallback: string) {
+  return z.preprocess(v => (v == null || v === '') ? fallback : v, z.string().min(1))
+}
+function optionalStr() {
+  return z.preprocess(v => v == null ? undefined : v, z.string().optional())
+}
+
 const ExpenseSchema = z.object({
-  title: z.string().min(1),
-  amount: z.number().positive(),
-  category: z.string(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  notes: z.string().optional(),
+  title:      strWithDefault('Expense'),
+  amount:     z.coerce.number().positive(),
+  category:   strWithDefault('Other Expense'),
+  date:       z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  recurrence: z.preprocess(
+    v => (v == null || !['monthly','quarterly','annual','one_time'].includes(String(v))) ? undefined : v,
+    z.enum(['monthly','quarterly','annual','one_time']).optional()
+  ),
+  notes: optionalStr(),
 })
 
 const InvoiceSchema = z.object({
   customerName: z.string().min(1),
-  amount: z.number().positive(),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  notes: z.string().optional(),
+  amount:       z.coerce.number().positive(),
+  dueDate:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notes:        optionalStr(),
 })
 
 const IncomeSchema = z.object({
-  description: z.string().min(1),
-  amount: z.number().positive(),
-  category: z.string(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  source: z.string().optional(),
+  description:  strWithDefault('Payment received'),
+  amount:       z.coerce.number().positive(),
+  category:     strWithDefault('Other Income'),
+  date:         z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  source:       optionalStr(),
+  project_name: optionalStr(),
 })
+
+async function resolveProjectId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string,
+  hint: string
+): Promise<{ project_id: string; project_name: string } | null> {
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('id, name, client')
+    .eq('org_id', orgId)
+    .eq('status', 'active')
+
+  if (!projects?.length) return null
+
+  const h = hint.toLowerCase()
+  const match = projects.find((p) => {
+    const n = p.name.toLowerCase()
+    const c = (p.client ?? '').toLowerCase()
+    return n.includes(h) || h.includes(n) || (c && (c.includes(h) || h.includes(c)))
+  })
+
+  if (!match) return null
+  return { project_id: match.id, project_name: match.name }
+}
 
 async function extractWriteAction(
   intent: ChatIntent,
   message: string,
   provider: string,
-  model: string
+  model: string,
+  orgId: string,
+  supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<PendingAction | null> {
   const adapter = getLLMAdapter(provider as 'openai' | 'anthropic', model)
   const today = new Date().toISOString().split('T')[0]
@@ -158,11 +240,21 @@ async function extractWriteAction(
   try {
     if (intent === 'create_expense') {
       const raw = await adapter.extractStructuredOutput<Record<string, unknown>>(
-        `Extract expense details from: "${message}"\nToday is ${today}.\nValid categories: ${EXPENSE_CATEGORIES.join(', ')}`,
-        { title: 'string', amount: 'number', category: 'string', date: 'YYYY-MM-DD', notes: 'string (optional)' }
+        `Extract expense details from: "${message}"\nToday is ${today}. IMPORTANT: If no date is mentioned, use today's date (${today}) in YYYY-MM-DD format.\nValid categories: ${EXPENSE_CATEGORIES.join(', ')}\nExtract amount as a number (digits only, no $ or commas).\nFor recurrence: choose one of monthly|quarterly|annual|one_time based on clues in the message. Examples: "monthly Slack" → monthly, "annual AWS" → annual, "quarterly audit" → quarterly, "bought a laptop" → one_time. If unclear, leave null.`,
+        { title: 'string', amount: 'number', category: 'string', date: `YYYY-MM-DD (default to ${today} if not specified)`, recurrence: 'monthly|quarterly|annual|one_time (or null if unclear)', notes: 'string (optional)' }
       )
+      if (!raw.amount) {
+        const m = message.match(/\$?([\d,]+(?:\.\d{1,2})?)\b/)
+        if (m) raw.amount = parseFloat(m[1].replace(/,/g, ''))
+      }
+      if (!raw.date || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date))) {
+        raw.date = today
+      }
       const parsed = ExpenseSchema.safeParse(raw)
-      if (!parsed.success) return null
+      if (!parsed.success) {
+        console.error('[create_expense] Zod validation failed:', parsed.error.format(), 'raw:', raw)
+        return null
+      }
       return { type: 'create_expense', params: parsed.data }
     }
 
@@ -171,6 +263,14 @@ async function extractWriteAction(
         `Extract invoice details from: "${message}"\nToday is ${today}. Due date defaults to 30 days from today.`,
         { customerName: 'string', amount: 'number', dueDate: 'YYYY-MM-DD', notes: 'string (optional)' }
       )
+      if (!raw.amount) {
+        const m = message.match(/\$?([\d,]+(?:\.\d{1,2})?)\b/)
+        if (m) raw.amount = parseFloat(m[1].replace(/,/g, ''))
+      }
+      if (!raw.dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.dueDate))) {
+        const thirtyDays = new Date(Date.now() + 30 * 86400_000)
+        raw.dueDate = thirtyDays.toISOString().split('T')[0]
+      }
       const parsed = InvoiceSchema.safeParse(raw)
       if (!parsed.success) return null
       return { type: 'create_invoice', params: parsed.data }
@@ -178,14 +278,42 @@ async function extractWriteAction(
 
     if (intent === 'add_income') {
       const raw = await adapter.extractStructuredOutput<Record<string, unknown>>(
-        `Extract income details from: "${message}"\nToday is ${today}.\nValid categories: ${INCOME_CATEGORIES.join(', ')}`,
-        { description: 'string', amount: 'number', category: 'string', date: 'YYYY-MM-DD', source: 'string (optional)' }
+        `Extract income/payment details from this message: "${message}"\n\nToday is ${today}.\n\nRules:\n- amount: extract as a plain number (e.g. 500, not "$500"). If not stated, leave null.\n- date: YYYY-MM-DD. If not stated, use ${today}.\n- description: brief label for the payment (e.g. "KPI Project payment", "Access Engineering payment").\n- category: pick the best fit from: ${INCOME_CATEGORIES.join(', ')}. Default to "Other Income" if unsure.\n- project_name: IMPORTANT — if the message mentions ANY company name, project name, or client name (even just as a proper noun like "Access Engineering" or "KPI Project"), extract it here. Do not require the word "project" or "client" to be present.\n- source: optional payment source (e.g. "bank transfer", "PayPal").\n\nExamples:\n- "Access Engineering paid $500" → project_name: "Access Engineering", amount: 500\n- "Add $500 to KPI Project income" → project_name: "KPI Project", amount: 500\n- "Client paid us $2000 upfront" → project_name: null (no specific name given), amount: 2000`,
+        { description: 'string', amount: 'number', category: 'string', date: `YYYY-MM-DD (default ${today})`, source: 'string (optional)', project_name: 'string (optional — any company, project, or client name mentioned)' }
       )
+      // Regex fallback: if LLM didn't extract amount, pull it from message text
+      if (!raw.amount) {
+        const m = message.match(/\$?([\d,]+(?:\.\d{1,2})?)\b/)
+        if (m) raw.amount = parseFloat(m[1].replace(/,/g, ''))
+      }
+      // Regex fallback: if LLM didn't extract a description, derive from message
+      if (!raw.description) {
+        raw.description = 'Payment received'
+      }
+      // Default missing or malformed date to today before Zod validation
+      if (!raw.date || !/^\d{4}-\d{2}-\d{2}$/.test(String(raw.date))) {
+        raw.date = today
+      }
       const parsed = IncomeSchema.safeParse(raw)
-      if (!parsed.success) return null
-      return { type: 'add_income', params: parsed.data }
+      if (!parsed.success) {
+        console.error('[add_income] Zod validation failed:', parsed.error.format(), 'raw:', raw)
+        return null
+      }
+
+      const params = { ...parsed.data }
+
+      // Resolve project_name to a project_id from the org's existing projects
+      if (params.project_name) {
+        const resolved = await resolveProjectId(supabase, orgId, params.project_name)
+        if (resolved) {
+          return { type: 'add_income', params: { ...params, ...resolved } }
+        }
+      }
+
+      return { type: 'add_income', params }
     }
-  } catch {
+  } catch (err) {
+    console.error('[extractWriteAction] failed:', err)
     return null
   }
 
@@ -275,9 +403,34 @@ export async function POST(request: NextRequest) {
 
   const adapter = getLLMAdapter(provider as 'openai' | 'anthropic', model)
 
-  if (isWriteIntent) {
+  if (intent === 'confirm_action') {
+    // Look up the most recent assistant message in this session that has a pendingAction
+    const { data: lastActionMsg } = await supabase
+      .from('chat_messages')
+      .select('data_context')
+      .eq('session_id', chatSessionId)
+      .eq('role', 'assistant')
+      .not('data_context', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    const stored = lastActionMsg?.data_context as { pendingAction?: PendingAction } | null
+    if (stored?.pendingAction) {
+      pendingAction = stored.pendingAction
+      const confirmText = formatPendingActionSummary(pendingAction)
+      const context = { pending_action: pendingAction.params, today: new Date().toISOString().split('T')[0] }
+      const systemPrompt = buildSystemPrompt(context)
+      responseText = await adapter.chat(
+        [{ role: 'user', content: `The user confirmed. Here are the details again: ${confirmText}. Re-present this as a brief 1-2 sentence confirmation message asking them to click Confirm to save. Be friendly and concise.` }],
+        systemPrompt
+      )
+    } else {
+      responseText = "I don't have a pending action to confirm. Could you restate what you'd like to record?"
+    }
+  } else if (isWriteIntent) {
     // Extract action params, then ask LLM for a friendly confirmation message
-    pendingAction = await extractWriteAction(intent, message, provider, model) ?? undefined
+    pendingAction = await extractWriteAction(intent, message, provider, model, orgId, supabase) ?? undefined
 
     if (pendingAction) {
       const confirmText = formatPendingActionSummary(pendingAction)

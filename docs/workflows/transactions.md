@@ -28,11 +28,31 @@ Transactions are the core data unit in Finvio. Everything financial — income, 
   raw_metadata?: object,    // full provider payload (Stripe charge, Plaid txn, etc.)
   notes?: string,
   created_by?: uuid,        // user_id for manual entries
+  revenue_type?: 'recurring' | 'one_time' | 'project' | 'milestone',  // income classification
+  project_id?: uuid,        // optional link to a project row
   created_at: timestamp
 }
 ```
 
 Amount is always positive. A $500 expense is `{type: 'expense', amount: 500}` — not `{amount: -500}`.
+
+### Revenue Type
+
+`revenue_type` classifies income transactions for multi-model analytics:
+
+| Value | Meaning | Auto-assigned from category |
+|-------|---------|----------------------------|
+| `recurring` | Subscription, MRR | "Subscription Revenue" |
+| `one_time` | One-off sale or service | "One-time Revenue", "Service Revenue", "Refund Received" |
+| `project` | Project- or contract-based | "Project Revenue", "Contract Revenue", "Consulting" |
+| `milestone` | Milestone payment on a project | "Milestone Payment" |
+| `null` | Not yet classified | (fallback for unknown categories) |
+
+`revenue_type` is auto-set by the categorization engine when a category is assigned. Users can correct the category → `revenue_type` is updated accordingly. It is only set on `type = 'income'` transactions.
+
+### Project Links
+
+`project_id` (nullable FK → `projects.id`) optionally links a transaction to a project. This enables project-level P&L: collected revenue, expenses, and outstanding balance per project. Linking is done via the Projects page.
 
 ---
 
@@ -96,9 +116,11 @@ Creates a manual transaction. If no `category` provided, runs through the full 3
 
 ### PATCH /api/transactions
 
-Updates `category`, `is_reviewed`, `notes`, or `vendor`. When category changes:
+Updates `category`, `is_reviewed`, `notes`, `vendor`, or `project_id`. When category changes:
 - Sets `category_method = 'user'`, `category_confidence = 'high'`
 - Calls `saveOverride(orgId, description, category)` to persist the correction for future auto-categorization
+
+`project_id` accepts a UUID (to link) or `null` (to unlink). Setting it updates the linked project's collected/expense totals immediately — the Projects page reads these live from `GET /api/projects?totals=true`.
 
 ---
 
@@ -178,6 +200,8 @@ The source column in the transaction table shows colored badges:
 ## Filters
 
 The Transactions page has a type filter (All / Income / Expense) that rerenders the table client-side — no new API call needed since all transactions are already fetched.
+
+**Project assignment column:** The reviewed transactions table and the review queue both include a "Project" dropdown. Selecting a project immediately PATCHes the transaction with `project_id`, which updates the project's collected/expense totals on the Projects page. The dropdown only shows active projects. "—" means no project linked.
 
 Planned: date range filter, category filter. These are passed as query params to `GET /api/transactions` when set.
 
