@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
+import { createServiceClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -26,8 +27,25 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    const { error, data: { session } } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error && session) {
+      // Apply the company name the user typed at signup. A DB trigger creates
+      // the org with a generic default — overwrite it here with the real name.
+      const orgName = session.user.user_metadata?.org_name as string | undefined
+      if (orgName) {
+        const svc = createServiceClient()
+        const { data: member } = await svc
+          .from('org_members')
+          .select('org_id')
+          .eq('user_id', session.user.id)
+          .single()
+        if (member?.org_id) {
+          await svc
+            .from('organizations')
+            .update({ name: orgName })
+            .eq('id', member.org_id)
+        }
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }

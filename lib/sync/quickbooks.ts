@@ -161,7 +161,7 @@ export async function syncQuickBooksData(
 
       const description = p.Line?.[0]?.Description ?? p.EntityRef?.name ?? 'QuickBooks expense'
       const vendor = p.EntityRef?.name ?? null
-      const { category, confidence, method } = await categorize(description, 'expense', orgId)
+      const { category, confidence, method, revenue_type } = await categorize(description, 'expense', orgId)
 
       await supabase.from('transactions').insert({
         org_id: orgId,
@@ -172,6 +172,7 @@ export async function syncQuickBooksData(
         category,
         category_confidence: confidence,
         category_method: method,
+        revenue_type: revenue_type ?? null,
         source: 'quickbooks',
         source_ref_id: refId,
         currency: 'usd',
@@ -209,7 +210,7 @@ export async function syncQuickBooksData(
       const description = inv.CustomerRef?.name
         ? `Invoice payment from ${inv.CustomerRef.name}`
         : 'QuickBooks invoice payment'
-      const { category, confidence, method } = await categorize(description, 'income', orgId)
+      const { category, confidence, method, revenue_type } = await categorize(description, 'income', orgId)
 
       await supabase.from('transactions').insert({
         org_id: orgId,
@@ -220,6 +221,7 @@ export async function syncQuickBooksData(
         category,
         category_confidence: confidence,
         category_method: method,
+        revenue_type: revenue_type ?? null,
         source: 'quickbooks',
         source_ref_id: refId,
         currency: 'usd',
@@ -258,7 +260,7 @@ export async function syncQuickBooksData(
       const description = r.CustomerRef?.name
         ? `Sales receipt from ${r.CustomerRef.name}`
         : r.Line?.[0]?.Description ?? 'QuickBooks sales receipt'
-      const { category, confidence, method } = await categorize(description, 'income', orgId)
+      const { category, confidence, method, revenue_type } = await categorize(description, 'income', orgId)
 
       await supabase.from('transactions').insert({
         org_id: orgId,
@@ -269,6 +271,7 @@ export async function syncQuickBooksData(
         category,
         category_confidence: confidence,
         category_method: method,
+        revenue_type: revenue_type ?? null,
         source: 'quickbooks',
         source_ref_id: refId,
         currency: 'usd',

@@ -128,7 +128,7 @@ export async function syncStripeCharge(
 
   if (existing) return
 
-  const { category, confidence, method } = await categorize(description, 'income', orgId)
+  const { category, confidence, method, revenue_type } = await categorize(description, 'income', orgId)
 
   await supabase.from('transactions').insert({
     org_id: orgId,
@@ -139,6 +139,7 @@ export async function syncStripeCharge(
     category,
     category_confidence: confidence,
     category_method: method,
+    revenue_type: revenue_type ?? 'recurring',
     source: 'stripe',
     source_ref_id: charge.id,
     currency: charge.currency,
@@ -208,9 +209,10 @@ export async function syncStripeInvoicePaid(
     amount,
     description,
     date,
-    category: 'Consulting Revenue',
+    category: 'Subscription Revenue',
     category_confidence: 'high',
     category_method: 'rule',
+    revenue_type: 'recurring',
     source: 'stripe',
     source_ref_id: refId,
     currency: invoice.currency,
@@ -244,9 +246,10 @@ export async function syncStripePayout(
     amount: payout.amount / 100,
     description: `Stripe payout${payout.description ? ` — ${payout.description}` : ''}`,
     date,
-    category: 'Revenue',
+    category: 'Subscription Revenue',
     category_confidence: 'high',
     category_method: 'rule',
+    revenue_type: 'recurring',
     source: 'stripe',
     source_ref_id: refId,
     currency: payout.currency,

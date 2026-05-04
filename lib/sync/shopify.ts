@@ -114,7 +114,7 @@ export async function syncShopifyOrders(
         const amount = parseFloat(order.total_price)
         const description = `Shopify Order ${order.name}`
         const date = order.created_at.split('T')[0]
-        const { category, confidence, method } = await categorize(description, 'income', orgId)
+        const { category, confidence, method, revenue_type } = await categorize(description, 'income', orgId)
 
         await supabase.from('transactions').insert({
           org_id: orgId,
@@ -125,6 +125,7 @@ export async function syncShopifyOrders(
           category,
           category_confidence: confidence,
           category_method: method,
+          revenue_type: revenue_type ?? 'one_time',
           source: 'shopify',
           source_ref_id: refId,
           currency: order.currency.toLowerCase(),

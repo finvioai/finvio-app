@@ -112,13 +112,23 @@ describe('getARR', () => {
 // ─── getBurnRate ──────────────────────────────────────────────────────────────
 
 describe('getBurnRate', () => {
-  it('averages expenses over the lookback window', async () => {
+  it('averages expenses over distinct months that had data', async () => {
     tableData.transactions = [
       { amount: 3000, type: 'expense', date: '2026-02-15' },
       { amount: 6000, type: 'expense', date: '2026-03-10' },
     ]
-    const { burnRate } = await getBurnRate(ORG, 3)
-    expect(burnRate).toBeCloseTo(3000)   // 9000 / 3
+    const { burnRate } = await getBurnRate(ORG)
+    // 2 distinct months with expenses → 9000 / 2 = 4500
+    expect(burnRate).toBeCloseTo(4500)
+  })
+
+  it('counts a new subscription at full value when it appears in only one month', async () => {
+    tableData.transactions = [
+      { amount: 20, type: 'expense', date: '2026-05-01', recurrence: 'monthly' },
+    ]
+    const { burnRate } = await getBurnRate(ORG)
+    // 1 distinct month → 20 / 1 = 20, not 20 / 3
+    expect(burnRate).toBeCloseTo(20)
   })
 
   it('returns 0 with warning when no expenses', async () => {

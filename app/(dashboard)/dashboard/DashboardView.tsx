@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { TrendingUp, DollarSign, Clock, Users, AlertCircle, ArrowRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, DollarSign, Clock, Users, AlertCircle, ArrowRight, BarChart2 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { MRRTrend, DashboardMetrics } from '@/types'
 
@@ -38,7 +37,7 @@ function KpiCard({ label, value, sub, icon: Icon, color }: {
   )
 }
 
-function RevenueChart({ data }: { data: MRRTrend[] }) {
+function RevenueChart({ data, label = 'MRR' }: { data: MRRTrend[]; label?: string }) {
   if (data.length === 0) {
     return (
       <div className="flex h-48 items-center justify-center text-sm text-gray-400">
@@ -59,7 +58,7 @@ function RevenueChart({ data }: { data: MRRTrend[] }) {
           tickFormatter={(v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
         />
         <Tooltip
-          formatter={(value: unknown) => [fmt(value as number), 'MRR']}
+          formatter={(value: unknown) => [fmt(value as number), label]}
           contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
         />
         <Bar dataKey="mrr" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -96,6 +95,76 @@ export function DashboardView({ data }: { data: DashboardViewData }) {
   const runwayLabel =
     data.runway === 'infinite' ? '∞ months' : `${data.runway} months`
 
+  const runwayColor =
+    data.runway === 'infinite' || (typeof data.runway === 'number' && data.runway >= 12)
+      ? 'bg-green-50 text-green-600'
+      : typeof data.runway === 'number' && data.runway >= 6
+      ? 'bg-yellow-50 text-yellow-600'
+      : 'bg-red-50 text-red-600'
+
+  const model = data.businessModel ?? 'saas'
+  const chartLabel = model === 'saas' ? 'MRR' : 'Revenue'
+
+  // Model-aware KPI card grid
+  const kpiGrid = () => {
+    if (model === 'smb') {
+      return (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard label="Revenue (this month)" value={fmt(data.totalRevenue)} sub={`Avg: ${fmt(data.avgMonthlyRevenue)}/mo`} icon={TrendingUp} color="bg-blue-50 text-blue-600" />
+          <KpiCard
+            label="Gross Profit"
+            value={fmt(data.grossProfit)}
+            sub={data.grossProfit >= 0 ? 'Profitable this month' : 'Loss this month'}
+            icon={data.grossProfit >= 0 ? TrendingUp : TrendingDown}
+            color={data.grossProfit >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}
+          />
+          <KpiCard label="Cash Balance" value={fmt(data.cashBalance)} sub={`Burn: ${fmt(data.burnRate)}/mo`} icon={DollarSign} color="bg-emerald-50 text-emerald-600" />
+          <KpiCard label="Avg Monthly Revenue" value={fmt(data.avgMonthlyRevenue)} sub="3-month rolling avg" icon={BarChart2} color="bg-violet-50 text-violet-600" />
+        </div>
+      )
+    }
+
+    if (model === 'project_based') {
+      return (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard label="Revenue (this month)" value={fmt(data.totalRevenue)} sub={`Avg: ${fmt(data.avgMonthlyRevenue)}/mo`} icon={TrendingUp} color="bg-blue-50 text-blue-600" />
+          <KpiCard
+            label="Gross Profit"
+            value={fmt(data.grossProfit)}
+            sub={data.grossProfit >= 0 ? 'Profitable this month' : 'Loss this month'}
+            icon={data.grossProfit >= 0 ? TrendingUp : TrendingDown}
+            color={data.grossProfit >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}
+          />
+          <KpiCard label="Cash Balance" value={fmt(data.cashBalance)} sub={`Burn: ${fmt(data.burnRate)}/mo`} icon={DollarSign} color="bg-emerald-50 text-emerald-600" />
+          <KpiCard label="Cash Runway" value={runwayLabel} sub={data.netBurn > 0 ? `Net burn: ${fmt(data.netBurn)}/mo` : 'Cash flow positive'} icon={Clock} color={runwayColor} />
+        </div>
+      )
+    }
+
+    if (model === 'mixed') {
+      return (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <KpiCard label="MRR" value={fmt(data.mrr)} sub={`ARR: ${fmt(data.arr)}`} icon={TrendingUp} color="bg-blue-50 text-blue-600" />
+          <KpiCard label="Total Revenue" value={fmt(data.totalRevenue)} sub="This month (all types)" icon={BarChart2} color="bg-indigo-50 text-indigo-600" />
+          <KpiCard label="Gross Profit" value={fmt(data.grossProfit)} sub="Revenue minus expenses" icon={data.grossProfit >= 0 ? TrendingUp : TrendingDown} color={data.grossProfit >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'} />
+          <KpiCard label="Cash Balance" value={fmt(data.cashBalance)} sub={`Burn: ${fmt(data.burnRate)}/mo`} icon={DollarSign} color="bg-emerald-50 text-emerald-600" />
+          <KpiCard label="Runway" value={runwayLabel} sub={data.netBurn > 0 ? `Net burn: ${fmt(data.netBurn)}/mo` : 'Cash flow positive'} icon={Clock} color={runwayColor} />
+          <KpiCard label="Customers" value={String(data.activeCustomers)} sub={`Churn: ${(data.churnRate * 100).toFixed(1)}%`} icon={Users} color="bg-purple-50 text-purple-600" />
+        </div>
+      )
+    }
+
+    // Default: SaaS (unchanged)
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label="MRR" value={fmt(data.mrr)} sub={`ARR: ${fmt(data.arr)}`} icon={TrendingUp} color="bg-blue-50 text-blue-600" />
+        <KpiCard label="Cash Balance" value={fmt(data.cashBalance)} sub={`Burn: ${fmt(data.burnRate)}/mo`} icon={DollarSign} color="bg-green-50 text-green-600" />
+        <KpiCard label="Runway" value={runwayLabel} sub={data.netBurn > 0 ? `Net burn: ${fmt(data.netBurn)}/mo` : 'Cash flow positive'} icon={Clock} color={runwayColor} />
+        <KpiCard label="Customers" value={String(data.activeCustomers)} sub={`Churn: ${(data.churnRate * 100).toFixed(1)}%`} icon={Users} color="bg-purple-50 text-purple-600" />
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div>
@@ -114,29 +183,12 @@ export function DashboardView({ data }: { data: DashboardViewData }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="MRR" value={fmt(data.mrr)} sub={`ARR: ${fmt(data.arr)}`} icon={TrendingUp} color="bg-blue-50 text-blue-600" />
-        <KpiCard label="Cash Balance" value={fmt(data.cashBalance)} sub={`Burn: ${fmt(data.burnRate)}/mo`} icon={DollarSign} color="bg-green-50 text-green-600" />
-        <KpiCard
-          label="Runway"
-          value={runwayLabel}
-          sub={data.netBurn > 0 ? `Net burn: ${fmt(data.netBurn)}/mo` : 'Cash flow positive'}
-          icon={Clock}
-          color={
-            data.runway === 'infinite' || (typeof data.runway === 'number' && data.runway >= 12)
-              ? 'bg-green-50 text-green-600'
-              : typeof data.runway === 'number' && data.runway >= 6
-              ? 'bg-yellow-50 text-yellow-600'
-              : 'bg-red-50 text-red-600'
-          }
-        />
-        <KpiCard label="Customers" value={String(data.activeCustomers)} sub={`Churn: ${(data.churnRate * 100).toFixed(1)}%`} icon={Users} color="bg-purple-50 text-purple-600" />
-      </div>
+      {kpiGrid()}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Revenue Trend (6 months)</h2>
-          <RevenueChart data={data.mrrTrend} />
+          <RevenueChart data={data.mrrTrend} label={chartLabel} />
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">

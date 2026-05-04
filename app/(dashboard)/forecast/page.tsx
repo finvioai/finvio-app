@@ -7,7 +7,7 @@ import {
   ResponsiveContainer, Legend,
 } from 'recharts'
 import { cn } from '@/lib/utils'
-import type { ForecastMonth } from '@/types'
+import type { ForecastMonth, BusinessModel } from '@/types'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,9 @@ function monthLabel(iso: string) {
 
 interface ForecastData {
   forecast: ForecastMonth[]
+  businessModel: BusinessModel
   currentMRR: number
+  avgMonthlyRevenue: number
   currentBurnRate: number
   currentCash: number
 }
@@ -77,11 +79,13 @@ function Slider({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ForecastPage() {
-  const [growthRate, setGrowthRate] = useState(5)   // percent
+  const [growthRate, setGrowthRate] = useState(5)   // percent (SaaS only)
   const [forecastMonths, setForecastMonths] = useState(12)
   const [data, setData] = useState<ForecastData | null>(null)
   const [loading, setLoading] = useState(false)
   const [baseLoaded, setBaseLoaded] = useState(false)
+
+  const isSaaS = !data || data.businessModel === 'saas'
 
   const load = useCallback(() => {
     setLoading(true)
@@ -98,14 +102,17 @@ export default function ForecastPage() {
 
   const chartData = data?.forecast.map((f) => ({
     month: monthLabel(f.month),
-    revenue: Math.round(f.projectedMRR),
+    revenue: Math.round(f.projectedRevenue ?? f.projectedMRR),
     expenses: Math.round(f.projectedExpenses),
     cash: Math.round(f.projectedCash),
   })) ?? []
 
-  const breakEvenMonth = data?.forecast.find((f) => f.projectedMRR >= f.projectedExpenses)
+  const breakEvenMonth = data?.forecast.find((f) =>
+    (f.projectedRevenue ?? f.projectedMRR) >= f.projectedExpenses
+  )
   const cashRunsOut = data?.forecast.find((f) => f.projectedCash < 0)
   const lastMonth = data?.forecast[data.forecast.length - 1]
+  const revenueLabel = isSaaS ? 'MRR at end' : 'Revenue at end'
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -121,15 +128,26 @@ export default function ForecastPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-6">
           <h2 className="text-sm font-semibold text-gray-900">Assumptions</h2>
 
-          <Slider
-            label="Monthly MRR Growth"
-            value={growthRate}
-            min={0}
-            max={25}
-            step={0.5}
-            format={(v) => `${v.toFixed(1)}%`}
-            onChange={setGrowthRate}
-          />
+          {isSaaS && (
+            <Slider
+              label="Monthly MRR Growth"
+              value={growthRate}
+              min={0}
+              max={25}
+              step={0.5}
+              format={(v) => `${v.toFixed(1)}%`}
+              onChange={setGrowthRate}
+            />
+          )}
+
+          {!isSaaS && data && (
+            <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5">
+              <p className="text-xs text-blue-700 font-medium">Using historical revenue trend</p>
+              <p className="text-xs text-blue-600 mt-0.5">
+                Projection based on your last 6 months of revenue.
+              </p>
+            </div>
+          )}
 
           <Slider
             label="Forecast Period"
@@ -145,10 +163,17 @@ export default function ForecastPage() {
             <div className="pt-4 border-t border-gray-100 space-y-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Baseline</p>
               <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Current MRR</span>
-                  <span className="font-medium">{fmt(data.currentMRR)}</span>
-                </div>
+                {isSaaS ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Current MRR</span>
+                    <span className="font-medium">{fmt(data.currentMRR)}</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Avg monthly revenue</span>
+                    <span className="font-medium">{fmt(data.avgMonthlyRevenue)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Monthly burn</span>
                   <span className="font-medium">{fmt(data.currentBurnRate)}</span>
@@ -185,10 +210,10 @@ export default function ForecastPage() {
                 <div className="rounded-xl border border-gray-200 bg-white p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="h-4 w-4 text-blue-500" />
-                    <p className="text-xs font-medium text-gray-500">MRR at end</p>
+                    <p className="text-xs font-medium text-gray-500">{revenueLabel}</p>
                   </div>
                   <p className="text-lg font-bold text-gray-900">
-                    {lastMonth ? fmt(lastMonth.projectedMRR) : '—'}
+                    {lastMonth ? fmt(lastMonth.projectedRevenue ?? lastMonth.projectedMRR) : '—'}
                   </p>
                 </div>
 

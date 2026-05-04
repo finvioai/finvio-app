@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, Users, PercentIcon, Loader2 } from 'lucide-react'
+import { TrendingUp, Users, PercentIcon, Loader2, DollarSign, TrendingDown } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts'
 import { cn } from '@/lib/utils'
-import type { MRRTrend } from '@/types'
+import type { MRRTrend, RevenueByTypeResult, BusinessModel } from '@/types'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -52,6 +52,11 @@ interface Customer {
   external_id: string | null
 }
 
+interface RevenueTrendPoint {
+  month: string
+  revenue: number
+}
+
 interface RevenueData {
   mrrTrend: MRRTrend[]
   mrr: number
@@ -59,7 +64,13 @@ interface RevenueData {
   activeCustomers: number
   churnRate: number
   bySource: Record<string, number>
+  revenueByType: RevenueByTypeResult
   customers: Customer[]
+  businessModel: BusinessModel
+  totalRevenue: number
+  avgMonthlyRevenue: number
+  grossProfit: number
+  revenueTrend: RevenueTrendPoint[]
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -83,7 +94,23 @@ function KpiCard({ label, value, sub, icon: Icon, color }: {
   )
 }
 
-type ActiveTab = 'trend' | 'source' | 'customers'
+const TYPE_COLORS: Record<string, string> = {
+  recurring:    '#3b82f6',
+  one_time:     '#10b981',
+  project:      '#f59e0b',
+  milestone:    '#8b5cf6',
+  unclassified: '#94a3b8',
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  recurring:    'Recurring',
+  one_time:     'One-time',
+  project:      'Project',
+  milestone:    'Milestone',
+  unclassified: 'Unclassified',
+}
+
+type ActiveTab = 'trend' | 'source' | 'type' | 'customers'
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -111,30 +138,50 @@ export default function RevenuePage() {
     return <div className="p-6 text-center text-sm text-gray-500">Failed to load revenue data.</div>
   }
 
+  const isSaaS = !data.businessModel || data.businessModel === 'saas' || data.businessModel === 'mixed'
   const pieData = Object.entries(data.bySource)
     .filter(([, v]) => v > 0)
     .map(([key, value]) => ({ name: SOURCE_LABELS[key] ?? key, value, key }))
+
+  const trendLabel = isSaaS ? 'MRR Trend' : 'Revenue Trend'
+  const trendData = isSaaS
+    ? data.mrrTrend.map((d) => ({ month: monthLabel(d.month), value: d.mrr }))
+    : (data.revenueTrend ?? []).map((d) => ({ month: monthLabel(d.month), value: d.revenue }))
+  const trendValueLabel = isSaaS ? 'MRR' : 'Revenue'
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Revenue</h1>
-        <p className="text-sm text-gray-500 mt-0.5">MRR, ARR, customers, and revenue sources</p>
+        <p className="text-sm text-gray-500 mt-0.5">
+          {isSaaS ? 'MRR, ARR, customers, and revenue sources' : 'Revenue, profit, and income sources'}
+        </p>
       </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="MRR" value={fmt(data.mrr)} sub="This month" icon={TrendingUp} color="bg-blue-50 text-blue-600" />
-        <KpiCard label="ARR" value={fmt(data.arr)} sub="Annualised" icon={TrendingUp} color="bg-indigo-50 text-indigo-600" />
-        <KpiCard label="Customers" value={String(data.activeCustomers)} sub="Active" icon={Users} color="bg-green-50 text-green-600" />
-        <KpiCard label="Churn Rate" value={pct(data.churnRate)} sub="This month" icon={PercentIcon} color="bg-orange-50 text-orange-600" />
+        {isSaaS ? (
+          <>
+            <KpiCard label="MRR" value={fmt(data.mrr)} sub="This month" icon={TrendingUp} color="bg-blue-50 text-blue-600" />
+            <KpiCard label="ARR" value={fmt(data.arr)} sub="Annualised" icon={TrendingUp} color="bg-indigo-50 text-indigo-600" />
+            <KpiCard label="Customers" value={String(data.activeCustomers)} sub="Active" icon={Users} color="bg-green-50 text-green-600" />
+            <KpiCard label="Churn Rate" value={pct(data.churnRate)} sub="This month" icon={PercentIcon} color="bg-orange-50 text-orange-600" />
+          </>
+        ) : (
+          <>
+            <KpiCard label="Revenue" value={fmt(data.totalRevenue ?? 0)} sub="This month" icon={DollarSign} color="bg-blue-50 text-blue-600" />
+            <KpiCard label="Avg Monthly Revenue" value={fmt(data.avgMonthlyRevenue ?? 0)} sub="Last 3 months" icon={TrendingUp} color="bg-indigo-50 text-indigo-600" />
+            <KpiCard label="Customers" value={String(data.activeCustomers)} sub="Active" icon={Users} color="bg-green-50 text-green-600" />
+            <KpiCard label="Gross Profit" value={fmt(data.grossProfit ?? 0)} sub="This month" icon={(data.grossProfit ?? 0) >= 0 ? TrendingUp : TrendingDown} color={(data.grossProfit ?? 0) >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'} />
+          </>
+        )}
       </div>
 
       {/* Tabs + Chart */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <div className="flex gap-1 mb-5 border-b border-gray-100 pb-3">
-          {(['trend', 'source', 'customers'] as ActiveTab[]).map((t) => (
+          {(['trend', 'source', 'type', 'customers'] as ActiveTab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -143,24 +190,24 @@ export default function RevenuePage() {
                 tab === t ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               )}
             >
-              {t === 'trend' ? 'MRR Trend' : t === 'source' ? 'By Source' : 'Customers'}
+              {t === 'trend' ? trendLabel : t === 'source' ? 'By Source' : t === 'type' ? 'By Type' : 'Customers'}
             </button>
           ))}
         </div>
 
         {tab === 'trend' && (
           <>
-            <p className="text-xs text-gray-500 mb-3">12-month MRR history</p>
-            {data.mrrTrend.length === 0 ? (
+            <p className="text-xs text-gray-500 mb-3">12-month {trendValueLabel.toLowerCase()} history</p>
+            {trendData.length === 0 || trendData.every(d => d.value === 0) ? (
               <p className="text-sm text-gray-400 py-10 text-center">No revenue data yet</p>
             ) : (
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={data.mrrTrend.map((d) => ({ month: monthLabel(d.month), mrr: d.mrr }))} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <BarChart data={trendData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
-                  <Tooltip formatter={(v: unknown) => [fmt(v as number), 'MRR']} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }} />
-                  <Bar dataKey="mrr" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Tooltip formatter={(v: unknown) => [fmt(v as number), trendValueLabel]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }} />
+                  <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -200,6 +247,49 @@ export default function RevenuePage() {
             )}
           </>
         )}
+
+        {tab === 'type' && (() => {
+          const typeData = Object.entries(data.revenueByType ?? {})
+            .filter(([, v]) => v > 0)
+            .map(([key, value]) => ({ name: TYPE_LABELS[key] ?? key, value, key }))
+          const total = typeData.reduce((s, d) => s + d.value, 0)
+          return (
+            <>
+              <p className="text-xs text-gray-500 mb-3">Revenue by type this month</p>
+              {typeData.length === 0 ? (
+                <p className="text-sm text-gray-400 py-10 text-center">No revenue data this month</p>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <ResponsiveContainer width={220} height={220}>
+                    <PieChart>
+                      <Pie data={typeData} dataKey="value" cx="50%" cy="50%" outerRadius={90} innerRadius={50}>
+                        {typeData.map((entry) => (
+                          <Cell key={entry.key} fill={TYPE_COLORS[entry.key] ?? '#94a3b8'} />
+                        ))}
+                      </Pie>
+                      <Legend />
+                      <Tooltip formatter={(v: unknown) => fmt(v as number)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-2 flex-1">
+                    {typeData.map((entry) => (
+                      <div key={entry.key} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 w-2.5 rounded-full" style={{ background: TYPE_COLORS[entry.key] ?? '#94a3b8' }} />
+                          <span className="text-sm text-gray-700">{entry.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-400">{total > 0 ? `${((entry.value / total) * 100).toFixed(0)}%` : '—'}</span>
+                          <span className="text-sm font-medium text-gray-900">{fmt(entry.value)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )
+        })()}
 
         {tab === 'customers' && (
           <>

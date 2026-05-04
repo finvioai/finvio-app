@@ -1,6 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
-import type { CategorizationResult } from '@/types'
+import type { CategorizationResult, IncomeCategory } from '@/types'
+import { CATEGORY_TO_REVENUE_TYPE } from '@/types'
 import { categorizeWithAI } from './ai-fallback'
+
+function getRevenueType(category: string, type: 'income' | 'expense') {
+  if (type !== 'income') return null
+  return CATEGORY_TO_REVENUE_TYPE[category as IncomeCategory] ?? null
+}
 
 function matchesRule(desc: string, matchType: string, matchValue: string): boolean {
   const val = matchValue.toLowerCase()
@@ -39,6 +45,7 @@ export async function categorize(
         subcategory: o.subcategory ?? undefined,
         confidence: 'high',
         method: 'rule',
+        revenue_type: getRevenueType(o.category, type),
       }
     }
   }
@@ -58,6 +65,7 @@ export async function categorize(
         subcategory: rule.subcategory ?? undefined,
         confidence: 'high',
         method: 'rule',
+        revenue_type: getRevenueType(rule.category, type),
       }
     }
   }
@@ -77,12 +85,17 @@ export async function categorize(
         subcategory: rule.subcategory ?? undefined,
         confidence: 'medium',
         method: 'rule',
+        revenue_type: getRevenueType(rule.category, type),
       }
     }
   }
 
-  // Layer 3: AI fallback
-  return categorizeWithAI(description, type)
+  // Layer 3: AI fallback — revenue_type resolved from AI-assigned category
+  const aiResult = await categorizeWithAI(description, type)
+  return {
+    ...aiResult,
+    revenue_type: getRevenueType(aiResult.category, type),
+  }
 }
 
 // Save a user correction as an org override for future auto-categorization.

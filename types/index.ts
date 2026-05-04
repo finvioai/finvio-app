@@ -27,6 +27,19 @@ export type InvestorUpdate = Tables<'investor_updates'>
 export type WebhookEvent = Tables<'webhook_events'>
 
 // ============================================================
+// Business Model Types
+// ============================================================
+
+export type BusinessModel = 'saas' | 'smb' | 'project_based' | 'mixed'
+
+export interface BusinessModelResult {
+  model: BusinessModel
+  hasRecurring: boolean
+  hasProject: boolean
+  hasOneTime: boolean
+}
+
+// ============================================================
 // Metrics Engine Types
 // ============================================================
 
@@ -55,9 +68,18 @@ export interface PnLReport {
 export interface ForecastMonth {
   month: string     // ISO date string
   projectedMRR: number
+  projectedRevenue: number  // total projected revenue (same as projectedMRR for SaaS; total for SMB/project)
   projectedExpenses: number
   projectedCash: number
   projectedRunway: number | 'infinite'
+}
+
+export interface RevenueByTypeResult {
+  recurring: number
+  one_time: number
+  project: number
+  milestone: number
+  unclassified: number
 }
 
 export interface DataCompletenessResult {
@@ -85,6 +107,12 @@ export interface DashboardMetrics {
   mrrTrend: MRRTrend[]
   dataCompleteness: DataCompletenessResult
   dataWarnings: string[]
+  // Multi-model additions
+  businessModel: BusinessModel
+  totalRevenue: number       // this calendar month
+  grossProfit: number        // this calendar month
+  avgMonthlyRevenue: number  // 3-month rolling average
+  revenueByType: RevenueByTypeResult
 }
 
 // ============================================================
@@ -98,9 +126,13 @@ export type ChatIntent =
   | 'query_pnl'
   | 'query_forecast'
   | 'query_customers'
+  | 'query_revenue'
+  | 'query_profit'
+  | 'query_project'
   | 'create_expense'
   | 'create_invoice'
   | 'add_income'
+  | 'confirm_action'
   | 'unknown'
 
 export interface ChatMessagePayload {
@@ -118,6 +150,7 @@ export interface CreateExpenseParams {
   amount: number
   category: string
   date: string
+  recurrence?: RecurrenceType
   notes?: string
 }
 
@@ -134,6 +167,9 @@ export interface AddIncomeParams {
   category: string
   date: string
   source?: string
+  recurrence?: RecurrenceType
+  project_id?: string
+  project_name?: string
 }
 
 export interface ChatResponse {
@@ -183,20 +219,50 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
 // Categorization Types
 // ============================================================
 
+export type RevenueType = 'recurring' | 'one_time' | 'project' | 'milestone'
+
+export type RecurrenceType = 'monthly' | 'quarterly' | 'annual' | 'one_time'
+
+export const RECURRENCE_OPTIONS: { value: RecurrenceType; label: string }[] = [
+  { value: 'monthly',   label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'annual',    label: 'Annual' },
+  { value: 'one_time',  label: 'One-time' },
+]
+
 export interface CategorizationResult {
   category: string
   subcategory?: string
   confidence: 'high' | 'medium' | 'low'
   method: 'rule' | 'ai' | 'user'
+  revenue_type?: RevenueType | null
 }
 
 export const INCOME_CATEGORIES = [
   'Subscription Revenue',
   'One-time Revenue',
+  'Service Revenue',
+  'Project Revenue',
+  'Milestone Payment',
+  'Contract Revenue',
   'Consulting',
   'Refund Received',
   'Other Income',
 ] as const
+
+export type IncomeCategory = typeof INCOME_CATEGORIES[number]
+
+export const CATEGORY_TO_REVENUE_TYPE: Partial<Record<IncomeCategory, RevenueType>> = {
+  'Subscription Revenue': 'recurring',
+  'One-time Revenue':     'one_time',
+  'Service Revenue':      'one_time',
+  'Project Revenue':      'project',
+  'Milestone Payment':    'milestone',
+  'Contract Revenue':     'project',
+  'Consulting':           'project',
+  'Refund Received':      'one_time',
+  'Other Income':         'one_time',
+}
 
 export const EXPENSE_CATEGORIES = [
   'Infrastructure',
@@ -213,7 +279,6 @@ export const EXPENSE_CATEGORIES = [
   'Other Expense',
 ] as const
 
-export type IncomeCategory = typeof INCOME_CATEGORIES[number]
 export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number]
 
 // ============================================================
@@ -275,4 +340,32 @@ export interface ScenarioResult {
   projectedCash: number
   projectedRunway: number | 'infinite'
   riskLevel: 'safe' | 'caution' | 'risky'
+}
+
+// ============================================================
+// Projects Types
+// ============================================================
+
+export type ProjectStatus = 'active' | 'completed' | 'on_hold' | 'cancelled'
+
+export interface Project {
+  id: string
+  org_id: string
+  name: string
+  client: string | null
+  description: string | null
+  status: ProjectStatus
+  budget: number | null
+  currency: string
+  start_date: string | null
+  end_date: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectSummary extends Project {
+  collected: number    // sum of income transactions linked to this project
+  expenses: number     // sum of expense transactions linked to this project
+  outstanding: number  // budget - collected (null budget → null)
 }

@@ -61,6 +61,7 @@ const CreateSchema = z.object({
   description: z.string().min(1).max(500),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   category: z.string().optional(),
+  recurrence: z.enum(['monthly', 'quarterly', 'annual', 'one_time']).optional(),
   notes: z.string().optional(),
   vendor: z.string().optional(),
 })
@@ -84,20 +85,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { type, amount, description, date, category, notes, vendor } = parsed.data
+  const { type, amount, description, date, category, recurrence, notes, vendor } = parsed.data
 
   let resolvedCategory = category
   let categoryConfidence: string
   let categoryMethod: string
+  let resolvedRevenueType: string | null = null
 
   if (resolvedCategory) {
     categoryConfidence = 'high'
     categoryMethod = 'user'
+    const { CATEGORY_TO_REVENUE_TYPE } = await import('@/types')
+    resolvedRevenueType = CATEGORY_TO_REVENUE_TYPE[resolvedCategory as keyof typeof CATEGORY_TO_REVENUE_TYPE] ?? null
   } else {
     const result = await categorize(description, type, orgId)
     resolvedCategory = result.category
     categoryConfidence = result.confidence
     categoryMethod = result.method
+    resolvedRevenueType = result.revenue_type ?? null
   }
 
   const { data: txn, error } = await supabase
@@ -111,6 +116,8 @@ export async function POST(request: NextRequest) {
       category: resolvedCategory,
       category_confidence: categoryConfidence,
       category_method: categoryMethod,
+      revenue_type: resolvedRevenueType,
+      recurrence: recurrence ?? null,
       notes: notes ?? null,
       vendor: vendor ?? null,
       source: 'manual',
@@ -130,9 +137,11 @@ export async function POST(request: NextRequest) {
 const PatchSchema = z.object({
   id: z.string().uuid(),
   category: z.string().optional(),
+  recurrence: z.enum(['monthly', 'quarterly', 'annual', 'one_time']).nullable().optional(),
   is_reviewed: z.boolean().optional(),
   notes: z.string().optional(),
   vendor: z.string().optional(),
+  project_id: z.string().uuid().nullable().optional(),
 })
 
 export async function PATCH(request: NextRequest) {
@@ -154,7 +163,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { id, category, is_reviewed, notes, vendor } = parsed.data
+  const { id, category, recurrence, is_reviewed, notes, vendor, project_id } = parsed.data
 
   // Fetch before-state for audit
   const { data: before } = await supabase
@@ -173,9 +182,11 @@ export async function PATCH(request: NextRequest) {
     updateData.category_confidence = 'high'
     updateData.is_reviewed = true
   }
+  if (recurrence !== undefined) updateData.recurrence = recurrence
   if (is_reviewed !== undefined) updateData.is_reviewed = is_reviewed
   if (notes !== undefined) updateData.notes = notes
   if (vendor !== undefined) updateData.vendor = vendor
+  if (project_id !== undefined) updateData.project_id = project_id
 
   const { data: txn, error } = await supabase
     .from('transactions')

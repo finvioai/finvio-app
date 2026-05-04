@@ -18,6 +18,8 @@ import {
   LogOut,
   ChevronDown,
   ArrowLeftRight,
+  FolderOpen,
+  BookOpen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -38,11 +40,13 @@ const navItems = [
   { href: '/invoices', label: 'Invoices', icon: FileText },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/forecast', label: 'Forecast', icon: TrendingDown },
+  { href: '/projects', label: 'Projects', icon: FolderOpen },
   { href: '/advisor', label: 'AI Advisor', icon: Bot },
   { href: '/scenarios', label: 'Scenarios', icon: FlaskConical },
   { href: '/investor-updates', label: 'Investor Updates', icon: Mail },
   { href: '/connections', label: 'Connections', icon: Plug },
   { href: '/import', label: 'Import Data', icon: Upload },
+  { href: '/glossary', label: 'Glossary', icon: BookOpen },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 

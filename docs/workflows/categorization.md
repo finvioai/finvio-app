@@ -8,14 +8,15 @@ The single entry point is `categorize(description, type, orgId)` in [lib/categor
 
 ```typescript
 {
-  category: string,          // e.g. "Software & SaaS", "Payroll"
+  category: string,                    // e.g. "Software & SaaS", "Payroll"
   subcategory?: string,
   confidence: 'high' | 'medium' | 'low',
-  method: 'rule' | 'ai' | 'user'
+  method: 'rule' | 'ai' | 'user',
+  revenue_type?: RevenueType | null    // auto-set for income; always null for expenses
 }
 ```
 
-Every caller stores all three fields so you can later filter the review queue by confidence.
+Every caller stores all three core fields (and `revenue_type` for income transactions) so you can later filter the review queue by confidence.
 
 ---
 
@@ -131,6 +132,28 @@ New transaction description arrives
           ▼
   Fallback: "Other Income" or "Other Expense", confidence=low, method=ai
 ```
+
+---
+
+## Revenue Type Auto-Assignment
+
+When a category is assigned to an income transaction (at any layer), the categorization engine automatically determines `revenue_type` using the `CATEGORY_TO_REVENUE_TYPE` mapping from `types/index.ts`:
+
+| Income category | `revenue_type` |
+|----------------|---------------|
+| `Subscription Revenue` | `recurring` |
+| `One-time Revenue` | `one_time` |
+| `Service Revenue` | `one_time` |
+| `Project Revenue` | `project` |
+| `Contract Revenue` | `project` |
+| `Consulting` | `project` |
+| `Milestone Payment` | `milestone` |
+| `Refund Received` | `one_time` |
+| `Other Income` | `one_time` |
+
+`revenue_type` is always `null` for expense transactions.
+
+If a user later corrects the category on a transaction, `revenue_type` is updated accordingly via the same mapping — no manual `revenue_type` field is exposed in the UI.
 
 ---
 

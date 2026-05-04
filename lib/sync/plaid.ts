@@ -192,7 +192,7 @@ export async function syncPlaidTransactions(
           continue
         }
 
-        const { category, confidence, method } = await categorize(description, type, orgId)
+        const { category, confidence, method, revenue_type } = await categorize(description, type, orgId)
 
         await supabase.from('transactions').insert({
           org_id: orgId,
@@ -203,6 +203,7 @@ export async function syncPlaidTransactions(
           category,
           category_confidence: confidence,
           category_method: method,
+          revenue_type: revenue_type ?? null,
           source: 'plaid',
           source_ref_id: refId,
           currency: 'usd',

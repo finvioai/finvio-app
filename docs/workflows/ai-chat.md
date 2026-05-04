@@ -36,15 +36,20 @@ Every incoming message is classified into one of these intents before any LLM ca
 | Intent | Example triggers |
 |--------|-----------------|
 | `query_runway` | "runway", "months left", "how long" |
-| `query_mrr` | "MRR", "monthly recurring", "revenue" |
+| `query_mrr` | "MRR", "monthly recurring revenue" — explicit only |
 | `query_burn` | "burn rate", "spending", "monthly expenses" |
 | `query_pnl` | "profit", "loss", "P&L", "net income" |
 | `query_forecast` | "forecast", "projection", "next N months" |
 | `query_customers` | "customers", "churn", "active users", "ARPU" |
+| `query_revenue` | "revenue", "how much did I make", "total revenue", "monthly income" |
+| `query_profit` | "profit", "gross margin", "how profitable" |
+| `query_project` | "project status", "billable", "WIP", "work in progress" |
 | `create_expense` | "add expense", "log expense", "record expense" |
 | `create_invoice` | "create invoice", "new invoice", "send invoice" |
 | `add_income` | "add income", "log revenue", "record payment" |
 | `unknown` | anything else |
+
+**Important routing distinction:** `query_mrr` only fires when the message contains "MRR", "monthly recurring", or "recurring revenue" explicitly. Generic revenue questions ("what's my revenue?" / "how much did I make?") route to `query_revenue` instead, which uses total revenue including one-time and project income — more appropriate for SMB and project-based businesses.
 
 **Detection process:**
 1. Regex patterns are tested against the message (fast, free)
@@ -69,16 +74,24 @@ For query intents, the system fetches exactly the metrics needed for that questi
 | `query_pnl` | full P&L object (revenue lines, expense lines, net) |
 | `query_forecast` | 6-month forecast at 5% monthly growth |
 | `query_customers` | active_customers, churn_rate |
+| `query_revenue` | total_revenue_this_month, revenue_by_type (recurring/one_time/project/milestone) |
+| `query_profit` | gross_profit_this_month, total_revenue_this_month |
+| `query_project` | projects array with collected, expenses, outstanding per project |
 | `unknown` | snapshot of mrr, cash, runway, data_completeness |
 
 All data is fetched from the database via `lib/metrics/index.ts` — the LLM never queries the DB directly.
 
+Every intent also includes `businessModel` (derived from `inferBusinessModel()`) in the context JSON.
+
 **System prompt structure:**
 
 ```
-You are Finvio, an AI financial advisor for startups.
+You are Finvio, an AI financial advisor.
+
+{model-specific guidance paragraph}
+
 You have access to the following verified financial data:
-{context JSON — exact numbers from the database}
+{context JSON — exact numbers from the database, always includes businessModel}
 
 Today's date: {date}
 
@@ -90,6 +103,15 @@ Rules:
 - If asked about something not in the context, say the data isn't available yet.
 ```
 
+**Business model guidance paragraphs** (injected based on `businessModel`):
+
+| Model | Guidance injected |
+|-------|------------------|
+| `saas` | "This is a SaaS business. Focus on MRR, ARR, runway, and churn. Use SaaS terminology naturally." |
+| `smb` | "This is a small business with non-recurring revenue. Focus on total revenue, gross profit, and cash flow. Avoid MRR framing unless explicitly asked." |
+| `project_based` | "This business earns revenue project-by-project. Focus on project margins, billing, and cash collection rather than recurring metrics." |
+| `mixed` | "This business has both recurring and one-time revenue streams. Address both dimensions when relevant." |
+
 The injected context looks like:
 ```json
 {
@@ -97,11 +119,12 @@ The injected context looks like:
   "cash_balance": 124000,
   "net_burn_per_month": 15500,
   "burn_rate": 18200,
+  "businessModel": "saas",
   "data_warnings": ["Bank account not connected — cash balance is estimated from transactions"]
 }
 ```
 
-The LLM then responds as a financial advisor interpreting those specific numbers.
+The LLM then responds as a financial advisor interpreting those specific numbers in the appropriate business model framing.
 
 ---
 
@@ -112,10 +135,11 @@ For write intents, the LLM extracts structured parameters from the user's messag
 **For `create_expense`:**
 ```typescript
 {
-  amount: number,        // validated > 0
+  amount: number,                                              // validated > 0
   description: string,
-  category: string,      // must be in allowed expense categories
-  date: string,          // ISO date, defaults to today
+  category: string,                                            // must be in EXPENSE_CATEGORIES
+  date: string,                                                // ISO date, defaults to today
+  recurrence?: 'monthly' | 'quarterly' | 'annual' | 'one_time', // affects burn rate calculation
   notes?: string
 }
 ```
@@ -137,7 +161,9 @@ For write intents, the LLM extracts structured parameters from the user's messag
   description: string,
   category: string,      // must be in allowed income categories
   date: string,
-  notes?: string
+  source?: string,
+  project_id?: string,   // set by user in confirmation card (optional)
+  project_name?: string  // display name, resolved client-side
 }
 ```
 
@@ -163,13 +189,23 @@ When the frontend receives a `pendingAction`, it renders a `ConfirmationCard` in
 - **Confirm** → `POST /api/chat/confirm` with `{action, sessionId}`
 - **Cancel** → The pending action is discarded, a cancellation message is shown
 
-On confirmation, `/api/chat/confirm` executes the actual DB write:
+**Editable fields in the card:** The AI pre-fills category and recurrence from what it extracted. The user can correct them before confirming without having to retype the message.
+
+| Action | Editable in card | Read-only in card |
+|--------|-----------------|-------------------|
+| `create_expense` | Category (dropdown), Recurrence (dropdown) | Title, Amount, Date, Notes |
+| `add_income` | Category (dropdown), Project link (picker) | Description, Amount, Date, Source |
+| `create_invoice` | None | Customer, Amount, Due Date, Notes |
+
+On confirmation, `/api/chat/confirm` merges any user overrides with the AI-extracted params before executing the DB write:
 
 | Action type | What happens |
 |------------|-------------|
-| `create_expense` | INSERT into `transactions` (type='expense', source='manual', is_reviewed=true) |
+| `create_expense` | INSERT into `transactions` (type='expense', source='manual', is_reviewed=true, recurrence from card) |
 | `create_invoice` | INSERT into `invoices` (status='draft', unique INV-XXXXXXXX number generated) |
-| `add_income` | INSERT into `transactions` (type='income', source='manual', is_reviewed=true) |
+| `add_income` | INSERT into `transactions` (type='income', source='manual', is_reviewed=true, project_id if selected) |
+
+**Project linking for income:** The `add_income` confirmation card fetches the org's active projects from `GET /api/projects` and renders an optional "Link to project" dropdown. If the user selects a project before confirming, `project_id` is included in the transaction insert, and the project's collected/outstanding totals update automatically.
 
 After execution, `writeAuditLog()` records who created what and when. A confirmation message is stored in the session's chat history.
 
@@ -180,6 +216,12 @@ After execution, `writeAuditLog()` records who created what and when. A confirma
 Each conversation belongs to a `chat_sessions` row. Sessions are created on first message if no `sessionId` is provided, and the returned `sessionId` is reused for all subsequent messages in the conversation.
 
 The last 10 messages of a session are injected into the LLM call as conversation history, giving the AI short-term memory within a session.
+
+**Session persistence:** The active `sessionId` is stored in `localStorage` under the key `finvio_chat_session_id`. Navigating away from the advisor page and returning restores the last session automatically — messages are re-fetched from `GET /api/chat/sessions/[id]/messages`.
+
+**Session history sidebar:** The advisor page shows a sidebar listing the 30 most recent sessions (title + relative time). Clicking a session loads its message history. The "New chat" button clears the active session and removes the localStorage entry, starting fresh. Each session row has a delete (trash) icon on hover — clicking it calls `DELETE /api/chat/sessions/[id]` and removes the session and all its messages. If the deleted session is currently active, the chat resets to a new session.
+
+**Session list API:** `GET /api/chat/sessions` returns sessions ordered by `updated_at DESC`. `GET /api/chat/sessions/[id]/messages` returns all messages for a session ordered by `created_at ASC`.
 
 ---
 

@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
         description: p.title,
         category: p.category,
         date: p.date,
+        recurrence: p.recurrence ?? null,
         notes: p.notes,
         source: 'manual',
         is_reviewed: true,
@@ -95,10 +96,12 @@ export async function POST(request: NextRequest) {
         amount: p.amount,
         description: p.description,
         category: p.category,
+        recurrence: p.recurrence ?? null,
         date: p.date,
         notes: p.source,
         source: 'manual',
         is_reviewed: true,
+        project_id: p.project_id ?? null,
       })
       .select('id')
       .single()

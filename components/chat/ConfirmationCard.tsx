@@ -1,9 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { CheckCircle, XCircle, Loader2, Receipt, FileText, TrendingUp } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { CheckCircle, XCircle, Loader2, Receipt, FileText, TrendingUp, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { PendingAction, CreateExpenseParams, CreateInvoiceParams, AddIncomeParams } from '@/types'
+import {
+  EXPENSE_CATEGORIES,
+  INCOME_CATEGORIES,
+  RECURRENCE_OPTIONS,
+} from '@/types'
+import type { PendingAction, CreateExpenseParams, CreateInvoiceParams, AddIncomeParams, RecurrenceType, Project } from '@/types'
 
 interface ConfirmationCardProps {
   action: PendingAction
@@ -16,7 +21,70 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 }
 
-function ActionDetails({ action }: { action: PendingAction }) {
+const selectCls =
+  'h-7 flex-1 rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500'
+
+function ProjectPicker({
+  selectedId,
+  onChange,
+}: {
+  selectedId: string
+  onChange: (id: string, name: string) => void
+}) {
+  const [projects, setProjects] = useState<Project[]>([])
+
+  useEffect(() => {
+    fetch('/api/projects')
+      .then((r) => r.json())
+      .then((d) => setProjects(d.projects ?? []))
+      .catch(() => {})
+  }, [])
+
+  if (projects.length === 0) return null
+
+  return (
+    <div className="flex items-center gap-2">
+      <FolderOpen className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+      <select
+        value={selectedId}
+        onChange={(e) => {
+          const proj = projects.find((p) => p.id === e.target.value)
+          onChange(e.target.value, proj?.name ?? '')
+        }}
+        className={selectCls}
+      >
+        <option value="">Link to project (optional)</option>
+        {projects
+          .filter((p) => p.status === 'active')
+          .map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}{p.client ? ` — ${p.client}` : ''}
+            </option>
+          ))}
+      </select>
+    </div>
+  )
+}
+
+function ActionDetails({
+  action,
+  category,
+  onCategoryChange,
+  recurrence,
+  onRecurrenceChange,
+  projectId,
+  projectName,
+  onProjectChange,
+}: {
+  action: PendingAction
+  category: string
+  onCategoryChange: (v: string) => void
+  recurrence: string
+  onRecurrenceChange: (v: string) => void
+  projectId: string
+  projectName: string
+  onProjectChange: (id: string, name: string) => void
+}) {
   if (action.type === 'create_expense') {
     const p = action.params as CreateExpenseParams
     return (
@@ -25,10 +93,22 @@ function ActionDetails({ action }: { action: PendingAction }) {
           <Receipt className="h-4 w-4" />
           <span className="text-sm font-semibold uppercase tracking-wide">New Expense</span>
         </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm mt-3">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mt-3 items-center">
           <span className="text-gray-500">Description</span><span className="font-medium text-gray-900">{p.title}</span>
           <span className="text-gray-500">Amount</span><span className="font-semibold text-red-600">{formatCurrency(p.amount)}</span>
-          <span className="text-gray-500">Category</span><span className="font-medium text-gray-900">{p.category}</span>
+          <span className="text-gray-500">Category</span>
+          <select value={category} onChange={(e) => onCategoryChange(e.target.value)} className={selectCls}>
+            {EXPENSE_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <span className="text-gray-500">Recurrence</span>
+          <select value={recurrence} onChange={(e) => onRecurrenceChange(e.target.value)} className={selectCls}>
+            <option value="">Not specified</option>
+            {RECURRENCE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
           <span className="text-gray-500">Date</span><span className="font-medium text-gray-900">{p.date}</span>
           {p.notes && <><span className="text-gray-500">Notes</span><span className="text-gray-900">{p.notes}</span></>}
         </div>
@@ -62,12 +142,28 @@ function ActionDetails({ action }: { action: PendingAction }) {
           <TrendingUp className="h-4 w-4" />
           <span className="text-sm font-semibold uppercase tracking-wide">New Income</span>
         </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm mt-3">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mt-3 items-center">
           <span className="text-gray-500">Description</span><span className="font-medium text-gray-900">{p.description}</span>
           <span className="text-gray-500">Amount</span><span className="font-semibold text-green-600">{formatCurrency(p.amount)}</span>
-          <span className="text-gray-500">Category</span><span className="font-medium text-gray-900">{p.category}</span>
+          <span className="text-gray-500">Category</span>
+          <select value={category} onChange={(e) => onCategoryChange(e.target.value)} className={selectCls}>
+            {INCOME_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <span className="text-gray-500">Recurrence</span>
+          <select value={recurrence} onChange={(e) => onRecurrenceChange(e.target.value)} className={selectCls}>
+            <option value="">Not specified</option>
+            {RECURRENCE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
           <span className="text-gray-500">Date</span><span className="font-medium text-gray-900">{p.date}</span>
           {p.source && <><span className="text-gray-500">Source</span><span className="text-gray-900">{p.source}</span></>}
+          {projectName && <><span className="text-gray-500">Project</span><span className="font-medium text-gray-900">{projectName}</span></>}
+        </div>
+        <div className="pt-1">
+          <ProjectPicker selectedId={projectId} onChange={onProjectChange} />
         </div>
       </div>
     )
@@ -79,14 +175,49 @@ function ActionDetails({ action }: { action: PendingAction }) {
 export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }: ConfirmationCardProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [projectId, setProjectId] = useState('')
+  const [projectName, setProjectName] = useState('')
+  const [category, setCategory] = useState<string>(() => {
+    const p = action.params as CreateExpenseParams | AddIncomeParams
+    return p.category ?? ''
+  })
+  const [recurrence, setRecurrence] = useState<string>(() => {
+    if (action.type === 'create_expense') {
+      return (action.params as CreateExpenseParams).recurrence ?? ''
+    }
+    if (action.type === 'add_income') {
+      return (action.params as AddIncomeParams).recurrence ?? ''
+    }
+    return ''
+  })
+
+  function handleProjectChange(id: string, name: string) {
+    setProjectId(id)
+    setProjectName(name)
+  }
 
   async function handleConfirm() {
     setStatus('loading')
+
+    const finalAction: PendingAction = {
+      ...action,
+      params: {
+        ...action.params,
+        ...(category ? { category } : {}),
+        ...((action.type === 'create_expense' || action.type === 'add_income') && recurrence
+          ? { recurrence: recurrence as RecurrenceType }
+          : {}),
+        ...(action.type === 'add_income' && projectId
+          ? { project_id: projectId, project_name: projectName }
+          : {}),
+      },
+    }
+
     try {
       const res = await fetch('/api/chat/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, sessionId }),
+        body: JSON.stringify({ action: finalAction, sessionId }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -113,7 +244,16 @@ export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 space-y-4 max-w-sm">
-      <ActionDetails action={action} />
+      <ActionDetails
+        action={action}
+        category={category}
+        onCategoryChange={setCategory}
+        recurrence={recurrence}
+        onRecurrenceChange={setRecurrence}
+        projectId={projectId}
+        projectName={projectName}
+        onProjectChange={handleProjectChange}
+      />
 
       {status === 'error' && (
         <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-md">{errorMsg}</p>
