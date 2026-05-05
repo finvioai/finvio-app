@@ -6,7 +6,8 @@ Finvio is a financial intelligence platform for SaaS companies, SMBs, and projec
 
 | Feature | Description |
 |---|---|
-| AI Advisor | Chat interface powered by OpenAI or Anthropic; answers financial questions and can create records via confirmed write actions; frames responses based on detected business model |
+| AI Advisor | Chat interface powered by OpenAI or Anthropic; answers financial questions and can create records via confirmed write actions; frames responses based on detected business model; supports voice input (Web Speech API primary, OpenAI Whisper fallback) |
+| Voice Input | Press-and-hold mic on mobile (walkie-talkie style, auto-sends on release); click-to-toggle on desktop with live word-by-word transcript overlay; Web Speech API is free with no server round-trip; Whisper fallback (`whisper-1`) used on unsupported browsers and on Brave (which blocks Web Speech API) at ~$0.006/min; Brave detected via `navigator.brave.isBrave()` and bypassed automatically |
 | Dashboard | Adaptive KPI cards based on business model (MRR/ARR/Runway for SaaS; Revenue/Profit/Cash for SMB; Active Projects for project-based), 6-month revenue trend |
 | Revenue Analytics | MRR trend, by-source breakdown, customer table, and revenue-by-type breakdown (recurring / one-time / project / milestone) |
 | Revenue Classification | Transactions auto-tagged with `revenue_type` from category; powers business model detection and revenue breakdown analytics |

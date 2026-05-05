@@ -5,6 +5,8 @@ import { Send, Loader2, Bot, AlertTriangle, Sparkles, Plus, MessageSquare, Clock
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationCard } from '@/components/chat/ConfirmationCard'
+import { VoiceInput } from '@/components/chat/VoiceInput'
+import { VOICE_QUERY_KEY } from '@/components/chat/FloatingAdvisorButton'
 import type { PendingAction } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -252,6 +254,17 @@ export default function AdvisorPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // ─── auto-send voice query dropped by FloatingAdvisorButton ───────────
+  useEffect(() => {
+    const q = sessionStorage.getItem(VOICE_QUERY_KEY)
+    if (q) {
+      sessionStorage.removeItem(VOICE_QUERY_KEY)
+      // Small delay so the page finishes mounting before the message is sent
+      setTimeout(() => sendMessage(q), 300)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
@@ -351,6 +364,15 @@ export default function AdvisorPage() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage(input)
+    }
+  }
+
+  function handleTranscript(text: string, autoSend: boolean) {
+    setInput(text)
+    if (autoSend) {
+      sendMessage(text)
+    } else {
+      setTimeout(() => textareaRef.current?.focus(), 0)
     }
   }
 
@@ -517,6 +539,7 @@ export default function AdvisorPage() {
               className="resize-none flex-1 min-h-[44px] max-h-32 overflow-y-auto text-base"
               disabled={loading}
             />
+            <VoiceInput onTranscript={handleTranscript} disabled={loading} />
             <Button
               onClick={() => sendMessage(input)}
               disabled={!input.trim() || loading}

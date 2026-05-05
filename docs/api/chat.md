@@ -87,3 +87,52 @@ Execute a confirmed write action from a `pendingAction` returned by `/api/chat`.
 ### Security
 
 LLM output is **never** executed directly. The `pendingAction` is returned to the client, shown in a confirmation card, and only executed after explicit user confirmation via this endpoint. All parameters are re-validated server-side on confirm.
+
+---
+
+## POST /api/chat/transcribe
+
+Fallback speech-to-text endpoint used when the browser does not support the Web Speech API, or when the browser is Brave (which exposes `webkitSpeechRecognition` but silently blocks it). Accepts an audio recording and returns a transcript via OpenAI Whisper.
+
+> **Primary path**: Chrome/Safari/Edge (non-Brave) use the browser's built-in `SpeechRecognition` API directly — no server call needed, no cost. This endpoint is hit on Firefox, Brave, and any other browser without a working Web Speech API.
+>
+> **Brave detection**: On mount, the client calls `navigator.brave.isBrave()` (Brave's own async API). If it resolves `true`, the Web Speech path is skipped and this endpoint is used instead, regardless of whether `webkitSpeechRecognition` appears to be available.
+
+### Request
+
+`Content-Type: multipart/form-data`
+
+| Field | Type | Description |
+|---|---|---|
+| `audio` | File | Required. Audio recording blob. |
+
+### Accepted audio types
+
+`audio/webm`, `audio/mp4`, `audio/mpeg`, `audio/wav`, `audio/ogg`, `audio/x-m4a`
+
+### Constraints
+
+- Maximum file size: **24 MB** (Whisper limit is 25 MB)
+- Uses OpenAI Whisper `whisper-1` model
+- Requires `OPENAI_API_KEY` environment variable (already used for chat)
+
+### Response `200`
+
+```json
+{ "text": "Add a five hundred dollar AWS expense for today" }
+```
+
+### Error responses
+
+| Status | Meaning |
+|---|---|
+| 400 | No audio file provided |
+| 401 | Unauthenticated |
+| 413 | File exceeds 24 MB |
+| 415 | Unsupported audio MIME type |
+| 503 | `OPENAI_API_KEY` not configured |
+| 500 | Whisper transcription error |
+
+### Privacy
+
+Audio is sent to OpenAI Whisper for transcription only. **No audio is stored by Finvio.** For the primary Web Speech API path, audio is processed entirely by the browser's cloud engine (Google/Apple) and never reaches Finvio servers.
