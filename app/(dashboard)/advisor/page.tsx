@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Bot, AlertTriangle, Sparkles, Plus, MessageSquare, Clock, Trash2 } from 'lucide-react'
+import { Send, Loader2, Bot, AlertTriangle, Sparkles, Plus, MessageSquare, Clock, Trash2, Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationCard } from '@/components/chat/ConfirmationCard'
@@ -89,10 +89,10 @@ function MessageBubble({
           <Bot className="h-4 w-4 text-white" />
         </div>
       )}
-      <div className={cn('max-w-[75%] space-y-2', isUser && 'items-end flex flex-col')}>
+      <div className={cn('max-w-[85%] sm:max-w-[75%] space-y-2', isUser && 'items-end flex flex-col')}>
         <div
           className={cn(
-            'rounded-2xl px-4 py-3 text-sm leading-relaxed',
+            'rounded-2xl px-4 py-3 text-base leading-relaxed',
             isUser
               ? 'bg-blue-600 text-white rounded-tr-sm'
               : 'bg-white border border-gray-200 text-gray-900 rounded-tl-sm shadow-sm'
@@ -109,10 +109,10 @@ function MessageBubble({
           />
         )}
         {message.confirmed && (
-          <p className="text-xs text-green-600 px-1">Action confirmed and saved.</p>
+          <p className="text-sm text-green-600 px-1">Action confirmed and saved.</p>
         )}
         {message.cancelled && (
-          <p className="text-xs text-gray-400 px-1">Cancelled — nothing was saved.</p>
+          <p className="text-sm text-gray-400 px-1">Cancelled — nothing was saved.</p>
         )}
       </div>
     </div>
@@ -127,6 +127,7 @@ function SessionSidebar({
   onSelectSession,
   onNewChat,
   onDeleteSession,
+  onClose,
   loading,
 }: {
   sessions: ChatSession[]
@@ -134,15 +135,28 @@ function SessionSidebar({
   onSelectSession: (session: ChatSession) => void
   onNewChat: () => void
   onDeleteSession: (id: string) => void
+  onClose: () => void
   loading: boolean
 }) {
   return (
-    <div className="flex w-56 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
+    <>
+      {/* Mobile header row with title and close button */}
+      <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 md:hidden">
+        <span className="text-sm font-semibold text-gray-700">Recent Chats</span>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+          aria-label="Close history"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
       <div className="p-3 border-b border-gray-200">
         <Button
           size="sm"
           variant="outline"
-          className="w-full gap-2 text-xs"
+          className="w-full gap-2 text-sm"
           onClick={onNewChat}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -156,7 +170,7 @@ function SessionSidebar({
             <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
           </div>
         ) : sessions.length === 0 ? (
-          <p className="px-3 py-4 text-xs text-gray-400 text-center">No previous chats</p>
+          <p className="px-3 py-4 text-sm text-gray-400 text-center">No previous chats</p>
         ) : (
           sessions.map((s) => (
             <div
@@ -176,7 +190,7 @@ function SessionSidebar({
                 <div className="flex items-start gap-2">
                   <MessageSquare className={cn('h-3.5 w-3.5 shrink-0 mt-0.5', activeSessionId === s.id ? 'text-blue-500' : 'text-gray-400')} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium truncate leading-tight pr-4">
+                    <p className="text-sm font-medium truncate leading-tight pr-4">
                       {s.title ?? 'Untitled chat'}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
@@ -197,7 +211,7 @@ function SessionSidebar({
           ))
         )}
       </div>
-    </div>
+    </>
   )
 }
 
@@ -211,6 +225,7 @@ export default function AdvisorPage() {
   const [dataWarning, setDataWarning] = useState<string | null>(null)
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -255,7 +270,6 @@ export default function AdvisorPage() {
           id: m.id,
           role: m.role,
           content: m.content,
-          // Don't set confirmed/cancelled — historical messages render as plain text only
         }))
         setMessages(restored)
       }
@@ -274,7 +288,6 @@ export default function AdvisorPage() {
 
   async function handleDeleteSession(id: string) {
     await fetch(`/api/chat/sessions/${id}`, { method: 'DELETE' })
-    // If user deleted the active session, start fresh
     if (id === sessionId) handleNewChat()
     refreshSessions()
   }
@@ -309,7 +322,6 @@ export default function AdvisorPage() {
       if (data.sessionId) {
         setSessionId(data.sessionId)
         localStorage.setItem(SESSION_STORAGE_KEY, data.sessionId)
-        // Refresh session list so the new session appears in the sidebar
         refreshSessions()
       }
 
@@ -353,37 +365,65 @@ export default function AdvisorPage() {
   const isEmpty = messages.length === 0
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sessions sidebar */}
-      <SessionSidebar
-        sessions={sessions}
-        activeSessionId={sessionId}
-        onSelectSession={(s) => loadSession(s.id)}
-        onNewChat={handleNewChat}
-        onDeleteSession={handleDeleteSession}
-        loading={sessionsLoading}
-      />
+      <div
+        className={cn(
+          // Base: fixed overlay on mobile, slides in/out
+          'fixed inset-y-0 left-0 z-50 flex flex-col w-72 border-r border-gray-200 bg-gray-50',
+          'transition-transform duration-200 ease-in-out',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          // Desktop: always visible, reset to normal flow
+          'md:static md:translate-x-0 md:w-56 md:shrink-0 md:transition-none',
+        )}
+      >
+        <SessionSidebar
+          sessions={sessions}
+          activeSessionId={sessionId}
+          onSelectSession={(s) => { loadSession(s.id); setSidebarOpen(false) }}
+          onNewChat={() => { handleNewChat(); setSidebarOpen(false) }}
+          onDeleteSession={handleDeleteSession}
+          onClose={() => setSidebarOpen(false)}
+          loading={sessionsLoading}
+        />
+      </div>
 
       {/* Chat area */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Header */}
-        <div className="border-b border-gray-200 bg-white px-6 py-4 flex items-center justify-between">
+        <div className="border-b border-gray-200 bg-white px-4 md:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600">
+            {/* Burger button — mobile only */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 shrink-0"
+              aria-label="Open chat history"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
               <h1 className="text-base font-semibold text-gray-900">AI Financial Advisor</h1>
-              <p className="text-xs text-gray-500">Powered by real financial data, not guesses</p>
+              <p className="text-sm text-gray-500 hidden sm:block">Powered by real financial data, not guesses</p>
             </div>
           </div>
-          <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-3 py-1">AI Powered</span>
+          <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-3 py-1 hidden sm:block">AI Powered</span>
         </div>
 
         {/* Data warning banner */}
         {dataWarning && (
-          <div className="flex items-center gap-2 bg-yellow-50 border-b border-yellow-200 px-6 py-2.5 text-xs text-yellow-800">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-yellow-600" />
+          <div className="flex items-center gap-2 bg-yellow-50 border-b border-yellow-200 px-4 md:px-6 py-2.5 text-sm text-yellow-800">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-yellow-600" />
             {dataWarning}
             <button
               onClick={() => setDataWarning(null)}
@@ -395,15 +435,15 @@ export default function AdvisorPage() {
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-5">
           {isEmpty ? (
             <div className="flex flex-col items-center justify-center h-full text-center gap-6 pb-8">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50">
                 <Sparkles className="h-7 w-7 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Ask me anything about your finances</h2>
-                <p className="text-sm text-gray-500 mt-1 max-w-sm">
+                <h2 className="text-xl font-semibold text-gray-900">Ask me anything about your finances</h2>
+                <p className="text-base text-gray-500 mt-1 max-w-sm">
                   I answer using your real data — not averages. I can also create expenses, invoices, and income records for you.
                 </p>
               </div>
@@ -413,7 +453,7 @@ export default function AdvisorPage() {
                     key={p.label}
                     onClick={() => sendMessage(p.label)}
                     className={cn(
-                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                      'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
                       categoryColors[p.category]
                     )}
                   >
@@ -450,13 +490,13 @@ export default function AdvisorPage() {
 
         {/* Suggested chips when there are messages */}
         {!isEmpty && (
-          <div className="border-t border-gray-100 bg-white px-6 py-2 flex gap-2 overflow-x-auto">
+          <div className="border-t border-gray-100 bg-white px-4 md:px-6 py-2 flex gap-2 overflow-x-auto">
             {SUGGESTED_PROMPTS.slice(0, 4).map((p) => (
               <button
                 key={p.label}
                 onClick={() => sendMessage(p.label)}
                 disabled={loading}
-                className="shrink-0 rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="shrink-0 rounded-full border border-gray-200 px-3 py-1 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 {p.label}
               </button>
@@ -465,7 +505,7 @@ export default function AdvisorPage() {
         )}
 
         {/* Input */}
-        <div className="border-t border-gray-200 bg-white px-6 py-4">
+        <div className="border-t border-gray-200 bg-white px-4 md:px-6 py-4">
           <div className="flex gap-3 items-end">
             <Textarea
               ref={textareaRef}
@@ -474,14 +514,14 @@ export default function AdvisorPage() {
               onKeyDown={handleKeyDown}
               placeholder="Ask about your finances, or say 'Add a $500 expense for Vercel'…"
               rows={1}
-              className="resize-none flex-1 min-h-[42px] max-h-32 overflow-y-auto text-sm"
+              className="resize-none flex-1 min-h-[44px] max-h-32 overflow-y-auto text-base"
               disabled={loading}
             />
             <Button
               onClick={() => sendMessage(input)}
               disabled={!input.trim() || loading}
               size="icon"
-              className="h-[42px] w-[42px] shrink-0"
+              className="h-11 w-11 shrink-0"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -490,9 +530,6 @@ export default function AdvisorPage() {
               )}
             </Button>
           </div>
-          <p className="text-xs text-gray-400 mt-2">
-            Press Enter to send · Shift+Enter for new line · Write actions require your confirmation
-          </p>
         </div>
       </div>
     </div>
