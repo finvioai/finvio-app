@@ -27,7 +27,7 @@ const KEYWORD_MAP: { intent: ChatIntent; patterns: RegExp[] }[] = [
   },
   {
     intent: 'query_burn',
-    patterns: [/burn rate/i, /monthly (spend|spending|expenses?)/i, /how much.*spend/i],
+    patterns: [/burn rate/i, /what.{0,20}monthly (spend|spending|expenses?)/i, /how much.*spend/i],
   },
   {
     intent: 'query_pnl',
@@ -45,7 +45,14 @@ const KEYWORD_MAP: { intent: ChatIntent; patterns: RegExp[] }[] = [
   },
   {
     intent: 'create_expense',
-    patterns: [/(add|log|record|create|new) expense/i, /spent \$?[\d]/i, /paid \$?[\d].*(for)/i],
+    patterns: [
+      /(add|log|record|create|new).{0,40}expense/i,       // "add $20 monthly expense for X"
+      /(monthly|weekly|quarterly|annual|yearly|recurring).{0,20}(expense|cost|fee|subscription)/i,
+      /expense.{0,10}for\s+\w/i,                          // "expense for ChatGPT"
+      /\$?[\d,]+.{0,20}(expense|subscription|fee|bill)/i, // "$20 subscription"
+      /spent \$?[\d]/i,
+      /paid \$?[\d].*(for)/i,
+    ],
   },
   {
     intent: 'create_invoice',
@@ -141,7 +148,7 @@ export async function detectIntent(
   try {
     const adapter = getLLMAdapter(provider as 'openai' | 'anthropic', model)
     const result = await adapter.extractStructuredOutput<{ intent: ChatIntent }>(
-      `Classify this user message into exactly one of these intents: query_runway, query_mrr, query_revenue, query_profit, query_project, query_burn, query_pnl, query_forecast, query_customers, create_expense, create_invoice, add_income, confirm_action, unknown.\n\nRules:\n- Use confirm_action when the user is confirming or approving something (e.g. "yes", "ok", "sure", "correct", "proceed", "go ahead", "looks good").\n- Use add_income when the user wants to RECORD a payment they received (e.g. "client paid us", "got paid", "add $X to income", "upfront payment received", "[client name] paid $X"). Even if they mention a project or client name.\n- Use query_mrr ONLY when the user explicitly says "MRR" or "recurring revenue".\n- Use query_revenue for general revenue questions.\n- Use query_profit for profit/margin questions.\n- Use query_project to ask about project status or summaries.\n- Use query_forecast for forecasts/projections.\n- Use create_expense when recording a cost or spend.\n\nMessage: "${message}"`,
+      `Classify this user message into exactly one of these intents: query_runway, query_mrr, query_revenue, query_profit, query_project, query_burn, query_pnl, query_forecast, query_customers, create_expense, create_invoice, add_income, confirm_action, unknown.\n\nRules:\n- Use confirm_action ONLY for short affirmative replies (e.g. "yes", "ok", "sure", "correct", "proceed", "go ahead"). NEVER use confirm_action if the message contains a dollar amount or describes a new transaction.\n- Use create_expense when the user wants to record any cost, payment, bill, or subscription — regardless of phrasing. Examples: "add $20 monthly expense for ChatGPT", "log a $500 AWS bill", "add monthly expense for Slack", "$20 ChatGPT subscription", "add $20 expense". If the message has an amount AND mentions expense/cost/fee/bill/subscription, it is create_expense.\n- Use add_income when the user wants to RECORD a payment they received (e.g. "client paid us", "got paid", "add $X to income", "[client name] paid $X").\n- Use query_mrr ONLY when the user explicitly says "MRR" or "recurring revenue".\n- Use query_revenue for general revenue questions.\n- Use query_profit for profit/margin questions.\n- Use query_project to ask about project status or summaries.\n- Use query_forecast for forecasts/projections.\n\nMessage: "${message}"`,
       { intent: 'string' }
     )
     return result.intent ?? 'unknown'
