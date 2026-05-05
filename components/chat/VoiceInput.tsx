@@ -9,10 +9,15 @@ interface VoiceInputProps {
   disabled?: boolean
 }
 
-type VoiceState = 'idle' | 'recording' | 'transcribing'
+type VoiceState = 'idle' | 'recording' | 'transcribing' | 'loading-model'
 
 // 'auto' = stop + auto-send, 'fill' = stop + fill input, 'cancel' = stop + discard
 type StopMode = 'auto' | 'fill' | 'cancel'
+
+interface VoiceMode {
+  mode: 'server' | 'local' | 'unavailable'
+  serverFallback: boolean
+}
 
 interface SpeechRecognitionEvent extends Event {
   resultIndex: number
@@ -75,6 +80,7 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
   const [errorMsg, setErrorMsg] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [isWhisperMode, setIsWhisperMode] = useState(false)
+  const [modelProgress, setModelProgress] = useState(0)
 
   const transcriptRef = useRef('')
   const interimRef = useRef('')
@@ -85,8 +91,26 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
   const shouldRestartRef = useRef(false)
   const fallingBackRef = useRef(false) // true while switching from Web Speech → MediaRecorder
   const touchActiveRef = useRef(false)
+  const voiceModeRef = useRef<VoiceMode>({ mode: 'server', serverFallback: true })
 
   useEffect(() => { setIsMobile('ontouchstart' in window) }, [])
+
+  // On Brave: fetch routing decision and pre-warm WASM model if needed
+  useEffect(() => {
+    if (!isBraveBrowser()) return
+    const cores = navigator.hardwareConcurrency ?? 4
+    const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4
+    const lowEnd = cores < 4 || mem < 4
+    fetch(`/api/chat/voice-route?lowEndDevice=${lowEnd}`)
+      .then((r) => r.json())
+      .then((data: VoiceMode) => {
+        voiceModeRef.current = { mode: data.mode, serverFallback: data.serverFallback }
+        if (data.mode === 'local') {
+          import('@/lib/voice/transcriber').then(({ initModel }) => initModel()).catch(() => {})
+        }
+      })
+      .catch(() => {}) // routing failure → stay on server path
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -178,11 +202,51 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
-        if (stopModeRef.current === 'cancel') { setState('idle'); clearTranscript(); return }
+
+        if (stopModeRef.current === 'cancel') {
+          setState('idle')
+          clearTranscript()
+          return
+        }
+
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+
+        // ── Route: unavailable ──────────────────────────────────────────
+        const { mode, serverFallback } = voiceModeRef.current
+        if (mode === 'unavailable') {
+          setErrorMsg('Voice unavailable — daily limit reached and this device cannot run local transcription.')
+          setState('idle')
+          clearTranscript()
+          return
+        }
+
+        // ── Route: local (WASM) ─────────────────────────────────────────
+        if (mode === 'local') {
+          if (!await hasAudioSignal(blob)) { setState('idle'); clearTranscript(); return }
+          try {
+            setState('loading-model')
+            setModelProgress(0)
+            const { transcribeBlob } = await import('@/lib/voice/transcriber')
+            const text = await transcribeBlob(blob, (pct) => setModelProgress(pct))
+            setState('idle')
+            clearTranscript()
+            if (text) onTranscript(text, stopModeRef.current === 'auto')
+            return
+          } catch {
+            if (!serverFallback) {
+              setErrorMsg('Voice unavailable — daily limit reached and local transcription failed on this device.')
+              setState('idle')
+              clearTranscript()
+              return
+            }
+            // serverFallback === true → fall through to server path
+          }
+        }
+
+        // ── Route: server ───────────────────────────────────────────────
+        if (!await hasAudioSignal(blob)) { setState('idle'); clearTranscript(); return }
         setState('transcribing')
         try {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-          if (!await hasAudioSignal(blob)) { setState('idle'); clearTranscript(); return }
           const fd = new FormData()
           fd.append('audio', blob, 'recording.webm')
           const res = await fetch('/api/chat/transcribe', { method: 'POST', body: fd })
@@ -190,7 +254,8 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
             const { text } = await res.json() as { text: string }
             if (text?.trim()) onTranscript(text.trim(), stopModeRef.current === 'auto')
           } else {
-            setErrorMsg('Transcription failed. Please try again.')
+            const body = await res.json().catch(() => ({})) as { error?: string }
+            setErrorMsg(body.error ?? 'Transcription failed. Please try again.')
           }
         } catch {
           setErrorMsg('Network error during transcription.')
@@ -286,14 +351,16 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
   const displayText = transcript + interim
   const isRecording = state === 'recording'
   const isTranscribing = state === 'transcribing'
+  const isLoadingModel = state === 'loading-model'
+  const isProcessing = isTranscribing || isLoadingModel
 
   return (
     <div className="relative">
       {/* Voice overlay */}
-      {(isRecording || isTranscribing) && (
+      {(isRecording || isProcessing) && (
         <div className="absolute bottom-full mb-3 right-0 w-72 rounded-2xl border border-gray-200 bg-white shadow-xl p-4 z-50">
           <div className="flex items-center gap-2 mb-3">
-            {isTranscribing ? (
+            {isProcessing ? (
               <Loader2 className="h-3 w-3 text-blue-500 animate-spin shrink-0" />
             ) : (
               <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -302,14 +369,27 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
               </span>
             )}
             <span className="text-xs font-medium text-gray-700">
-              {isTranscribing ? 'Processing…' : 'Listening'}
+              {isLoadingModel ? 'Loading model…' : isTranscribing ? 'Processing…' : 'Listening'}
             </span>
             <span className="ml-auto text-xs text-gray-400 shrink-0">
               {isMobile ? 'Release to send' : isWhisperMode ? 'Click Send when done' : 'Esc to cancel'}
             </span>
           </div>
 
-          {isWhisperMode ? (
+          {isLoadingModel ? (
+            <div className="min-h-[80px] flex flex-col items-center justify-center gap-2">
+              <div className="w-full bg-gray-100 rounded-full h-1.5">
+                <div
+                  className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                  style={{ width: `${modelProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 text-center">
+                Downloading speech model… {modelProgress}%<br />
+                <span className="text-gray-300">(one-time download)</span>
+              </p>
+            </div>
+          ) : isWhisperMode ? (
             <div className="min-h-[80px] flex items-center justify-center">
               {isTranscribing ? (
                 <p className="text-xs text-gray-400">Transcribing…</p>
@@ -369,7 +449,7 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
 
       <button
         type="button"
-        disabled={disabled || isTranscribing}
+        disabled={disabled || isProcessing}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
@@ -381,7 +461,7 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
           isRecording
             ? 'bg-red-500 text-white shadow-md scale-110 ring-4 ring-red-100'
             : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700',
-          (disabled || isTranscribing) && 'opacity-40 cursor-not-allowed',
+          (disabled || isProcessing) && 'opacity-40 cursor-not-allowed',
         )}
       >
         {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}

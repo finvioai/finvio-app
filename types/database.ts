@@ -1201,6 +1201,32 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_usage: {
+        Row: {
+          user_id: string
+          date: string
+          duration_seconds: number
+        }
+        Insert: {
+          user_id: string
+          date?: string
+          duration_seconds?: number
+        }
+        Update: {
+          user_id?: string
+          date?: string
+          duration_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_usage_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

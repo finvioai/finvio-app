@@ -8,8 +8,13 @@ import { cn } from '@/lib/utils'
 // Storage key used by the advisor page to pick up the voice query
 export const VOICE_QUERY_KEY = 'finvio_voice_query'
 
-type ButtonState = 'idle' | 'countdown' | 'recording' | 'transcribing'
+type ButtonState = 'idle' | 'countdown' | 'recording' | 'transcribing' | 'loading-model'
 type StopMode = 'send' | 'cancel'
+
+interface VoiceMode {
+  mode: 'server' | 'local' | 'unavailable'
+  serverFallback: boolean
+}
 
 interface SpeechRecognitionEvent extends Event {
   resultIndex: number
@@ -68,6 +73,7 @@ export function FloatingAdvisorButton() {
   const [interim, setInterim] = useState('')
   const [isMobile, setIsMobile] = useState(false)
   const [isWhisperMode, setIsWhisperMode] = useState(false)
+  const [modelProgress, setModelProgress] = useState(0)
 
   const transcriptRef = useRef('')
   const interimRef = useRef('')
@@ -79,8 +85,26 @@ export function FloatingAdvisorButton() {
   const stopModeRef = useRef<StopMode>('cancel')
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const touchActiveRef = useRef(false)
+  const voiceModeRef = useRef<VoiceMode>({ mode: 'server', serverFallback: true })
 
   useEffect(() => { setIsMobile('ontouchstart' in window) }, [])
+
+  // On Brave: fetch routing decision and pre-warm WASM model if needed
+  useEffect(() => {
+    if (!isBraveBrowser()) return
+    const cores = navigator.hardwareConcurrency ?? 4
+    const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4
+    const lowEnd = cores < 4 || mem < 4
+    fetch(`/api/chat/voice-route?lowEndDevice=${lowEnd}`)
+      .then((r) => r.json())
+      .then((data: VoiceMode) => {
+        voiceModeRef.current = { mode: data.mode, serverFallback: data.serverFallback }
+        if (data.mode === 'local') {
+          import('@/lib/voice/transcriber').then(({ initModel }) => initModel()).catch(() => {})
+        }
+      })
+      .catch(() => {}) // routing failure → stay on server path
+  }, [])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -107,8 +131,7 @@ export function FloatingAdvisorButton() {
     setInterim('')
   }
 
-  function deliverTranscript() {
-    const text = (transcriptRef.current + interimRef.current).trim()
+  function deliverTranscript(text: string) {
     clearTranscript()
     if (!text) return
     sessionStorage.setItem(VOICE_QUERY_KEY, text)
@@ -155,8 +178,12 @@ export function FloatingAdvisorButton() {
       if (shouldRestartRef.current) {
         try { recognition.start() } catch { /* already restarting */ }
       } else {
-        if (stopModeRef.current === 'send') deliverTranscript()
-        else clearTranscript()
+        if (stopModeRef.current === 'send') {
+          const text = (transcriptRef.current + interimRef.current).trim()
+          deliverTranscript(text)
+        } else {
+          clearTranscript()
+        }
         setBtnState('idle')
       }
     }
@@ -173,11 +200,49 @@ export function FloatingAdvisorButton() {
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
-        if (stopModeRef.current === 'cancel') { setBtnState('idle'); clearTranscript(); return }
+
+        if (stopModeRef.current === 'cancel') {
+          setBtnState('idle')
+          clearTranscript()
+          return
+        }
+
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+
+        // ── Route: unavailable ──────────────────────────────────────────
+        const { mode, serverFallback } = voiceModeRef.current
+        if (mode === 'unavailable') {
+          setBtnState('idle')
+          clearTranscript()
+          return
+        }
+
+        // ── Route: local (WASM) ─────────────────────────────────────────
+        if (mode === 'local') {
+          if (!await hasAudioSignal(blob)) { setBtnState('idle'); clearTranscript(); return }
+          try {
+            setBtnState('loading-model')
+            setModelProgress(0)
+            const { transcribeBlob } = await import('@/lib/voice/transcriber')
+            const text = await transcribeBlob(blob, (pct) => setModelProgress(pct))
+            setBtnState('idle')
+            clearTranscript()
+            if (text) deliverTranscript(text)
+            return
+          } catch {
+            if (!serverFallback) {
+              setBtnState('idle')
+              clearTranscript()
+              return
+            }
+            // serverFallback === true → fall through to server path
+          }
+        }
+
+        // ── Route: server ───────────────────────────────────────────────
+        if (!await hasAudioSignal(blob)) { setBtnState('idle'); clearTranscript(); return }
         setBtnState('transcribing')
         try {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-          if (!await hasAudioSignal(blob)) { setBtnState('idle'); clearTranscript(); return }
           const fd = new FormData()
           fd.append('audio', blob, 'recording.webm')
           const res = await fetch('/api/chat/transcribe', { method: 'POST', body: fd })
@@ -293,7 +358,8 @@ export function FloatingAdvisorButton() {
   const displayText = transcript + interim
   const isRecording = btnState === 'recording'
   const isTranscribing = btnState === 'transcribing'
-  const isActive = isRecording || isTranscribing
+  const isLoadingModel = btnState === 'loading-model'
+  const isActive = isRecording || isTranscribing || isLoadingModel
 
   // Hidden on /advisor page — in-chat mic handles voice there
   if (pathname === '/advisor') return null
@@ -305,7 +371,7 @@ export function FloatingAdvisorButton() {
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-between py-12 px-6 bg-gradient-to-br from-blue-600 via-indigo-700 to-violet-800">
           {/* Status */}
           <div className="flex items-center gap-2.5 mt-4">
-            {isTranscribing ? (
+            {isTranscribing || isLoadingModel ? (
               <Loader2 className="h-4 w-4 text-white/70 animate-spin" />
             ) : (
               <span className="relative flex h-3 w-3">
@@ -314,17 +380,29 @@ export function FloatingAdvisorButton() {
               </span>
             )}
             <span className="text-white/80 text-sm font-medium tracking-wide">
-              {isTranscribing
-                ? 'Processing…'
-                : isMobile
-                  ? 'Release to send'
-                  : 'Recording — click ✓ or release to send'}
+              {isLoadingModel
+                ? `Downloading model… ${modelProgress}%`
+                : isTranscribing
+                  ? 'Processing…'
+                  : isMobile
+                    ? 'Release to send'
+                    : 'Recording — click ✓ or release to send'}
             </span>
           </div>
 
           {/* Transcript / recorder area */}
           <div className="flex-1 flex items-center justify-center w-full max-w-lg px-4 text-center">
-            {isWhisperMode ? (
+            {isLoadingModel ? (
+              <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+                <div className="w-full bg-white/20 rounded-full h-2">
+                  <div
+                    className="bg-white h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${modelProgress}%` }}
+                  />
+                </div>
+                <p className="text-sm text-white/60">(one-time download)</p>
+              </div>
+            ) : isWhisperMode ? (
               <div className="flex flex-col items-center gap-4">
                 <div className="flex items-end gap-1 h-10">
                   {[3, 5, 8, 6, 4, 7, 9, 5, 3, 6, 8, 4].map((h, i) => (
@@ -365,16 +443,16 @@ export function FloatingAdvisorButton() {
             {/* Confirm button — always visible so desktop users can click Send */}
             <button
               onClick={() => stopRecording('send')}
-              disabled={(isWhisperMode ? false : !displayText) || isTranscribing}
+              disabled={(isWhisperMode ? false : !displayText) || isTranscribing || isLoadingModel}
               aria-label="Send voice message"
               className={cn(
                 'h-16 w-16 rounded-full flex items-center justify-center transition-all active:scale-95',
-                (isWhisperMode || displayText) && !isTranscribing
+                (isWhisperMode || displayText) && !isTranscribing && !isLoadingModel
                   ? 'bg-white shadow-lg hover:bg-white/90'
                   : 'bg-white/20 border border-white/20 cursor-not-allowed',
               )}
             >
-              <Check className={cn('h-7 w-7', (isWhisperMode || displayText) && !isTranscribing ? 'text-blue-600' : 'text-white/40')} />
+              <Check className={cn('h-7 w-7', (isWhisperMode || displayText) && !isTranscribing && !isLoadingModel ? 'text-blue-600' : 'text-white/40')} />
             </button>
           </div>
         </div>
@@ -393,14 +471,14 @@ export function FloatingAdvisorButton() {
           'fixed bottom-6 right-6 z-[101] flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-200 select-none md:bottom-8 md:right-8',
           isRecording
             ? 'bg-red-500 ring-4 ring-red-300 scale-110'
-            : isTranscribing
+            : isTranscribing || isLoadingModel
               ? 'bg-indigo-600 scale-105'
               : 'bg-blue-600 hover:bg-blue-700 active:scale-95',
         )}
       >
         {isRecording ? (
           <Mic className="h-6 w-6 text-white animate-pulse" />
-        ) : isTranscribing ? (
+        ) : isTranscribing || isLoadingModel ? (
           <Loader2 className="h-6 w-6 text-white animate-spin" />
         ) : (
           <Bot className="h-6 w-6 text-white" />

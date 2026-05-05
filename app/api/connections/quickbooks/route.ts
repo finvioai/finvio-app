@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/connections?error=qb_not_configured', origin))
   }
 
-  const redirectUri = `${origin}/api/connections/quickbooks/callback`
+  const redirectUri = process.env.QB_REDIRECT_URI!
   const state = crypto.randomBytes(16).toString('hex')
 
   const params = new URLSearchParams({
