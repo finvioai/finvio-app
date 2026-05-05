@@ -18,7 +18,10 @@ Finvio is a financial intelligence platform for SaaS companies, SMBs, and projec
 | Investor Updates | AI-generated draft updates with editable textarea and save-to-history |
 | Integrations | Stripe, Plaid (bank link), Shopify, PayPal, QuickBooks Online (OAuth), CSV/XLSX import |
 | Invoices | Create, send, mark paid → auto-creates income transaction |
-| Expenses | Submit, approve/reject → auto-creates expense transaction |
+| Expenses | Submit, approve/reject → auto-creates expense transaction; optional receipt/bill file attachment (PDF or image) stored in Supabase Storage and viewable inline on Expenses and Transactions pages |
+| Receipt Uploads | File upload endpoint (`POST /api/receipts`) stores PDFs and images in `expense-receipts` Supabase Storage bucket; `receipt_url` linked on transactions and expense reports |
+| Balance Sheet | Simplified balance sheet page showing cash position, accounts receivable, recurring liabilities, and estimated equity derived from transaction data |
+| Landing Page | Public marketing landing page at `/` — unauthenticated visitors see the landing page; authenticated users are redirected to `/dashboard` |
 | Audit Log | All writes recorded with before/after state, IP, user agent |
 | Background Jobs | Vercel cron: daily sync + overdue invoice detection |
 | Reconciliation | Automatic Stripe payout ↔ Plaid deposit matching (±3 day window) |

@@ -48,6 +48,8 @@ Create a transaction manually.
 
 Required: `type`, `amount`, `description`, `date`. `source` defaults to `manual`.
 
+Optional: `receipt_url` — a public URL for an attached receipt or bill. Upload a file first via `POST /api/receipts` to obtain a URL, then pass it here.
+
 Auto-categorization runs if `category` is omitted — uses 3-layer engine (org overrides → rules → AI).
 
 ### Response
