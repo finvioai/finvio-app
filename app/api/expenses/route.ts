@@ -56,6 +56,7 @@ const CreateSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   notes: z.string().optional(),
   submitter_name: z.string().optional(),
+  receipt_url: z.string().url().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { title, amount, category, date, notes, submitter_name } = parsed.data
+  const { title, amount, category, date, notes, submitter_name, receipt_url } = parsed.data
 
   const { data: expense, error } = await supabase
     .from('expense_reports')
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
       notes: notes ?? null,
       submitter_id: user.id,
       submitter_name: submitter_name ?? null,
+      receipt_url: receipt_url ?? null,
       status: 'pending',
     })
     .select()

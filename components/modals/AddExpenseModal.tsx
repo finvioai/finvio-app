@@ -1,19 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetClose,
-} from '@/components/ui/sheet'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Paperclip } from 'lucide-react'
 import { EXPENSE_CATEGORIES, RECURRENCE_OPTIONS } from '@/types'
 
 interface AddExpenseModalProps {
@@ -27,6 +28,9 @@ const today = new Date().toISOString().split('T')[0]
 export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
   const [form, setForm] = useState({
     description: '',
     amount: '',
@@ -39,6 +43,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
 
   function reset() {
     setForm({ description: '', amount: '', category: '', recurrence: '', date: today, vendor: '', notes: '' })
+    setReceiptFile(null)
     setError('')
   }
 
@@ -53,6 +58,19 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
 
     setLoading(true)
     try {
+      let receipt_url: string | undefined
+      if (receiptFile) {
+        const fd = new FormData()
+        fd.append('file', receiptFile)
+        const uploadRes = await fetch('/api/receipts', { method: 'POST', body: fd })
+        if (!uploadRes.ok) {
+          const data = await uploadRes.json()
+          setError(data.error ?? 'Receipt upload failed.')
+          return
+        }
+        receipt_url = (await uploadRes.json()).receipt_url
+      }
+
       const res = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,6 +83,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
           date: form.date,
           vendor: form.vendor.trim() || undefined,
           notes: form.notes.trim() || undefined,
+          receipt_url,
         }),
       })
 
@@ -89,14 +108,14 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
   }
 
   return (
-    <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) reset(); onOpenChange(isOpen) }}>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader className="pb-2">
-          <SheetTitle>Add Expense</SheetTitle>
-          <SheetDescription>Record a manual expense transaction.</SheetDescription>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) reset(); onOpenChange(isOpen) }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Expense</DialogTitle>
+          <DialogDescription>Record a manual expense transaction.</DialogDescription>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-4 pb-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-4 px-6 pb-2">
           <div className="space-y-1.5">
             <Label htmlFor="exp-desc">Description *</Label>
             <Input
@@ -122,60 +141,60 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-category">Category</Label>
-            <select
-              id="exp-category"
-              value={form.category}
-              onChange={(e) => handleChange('category', e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="">Auto-detect</option>
-              {EXPENSE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            {!form.category && (
-              <p className="text-xs text-gray-500">Leave blank to auto-categorize.</p>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="exp-category">Category</Label>
+              <select
+                id="exp-category"
+                value={form.category}
+                onChange={(e) => handleChange('category', e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Auto-detect</option>
+                {EXPENSE_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="exp-recurrence">Recurrence</Label>
+              <select
+                id="exp-recurrence"
+                value={form.recurrence}
+                onChange={(e) => handleChange('recurrence', e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Not specified</option>
+                {RECURRENCE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-recurrence">Recurrence</Label>
-            <select
-              id="exp-recurrence"
-              value={form.recurrence}
-              onChange={(e) => handleChange('recurrence', e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <option value="">Not specified (treated as monthly)</option>
-              {RECURRENCE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500">Helps calculate accurate monthly burn rate.</p>
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="exp-date">Date *</Label>
+              <Input
+                id="exp-date"
+                type="date"
+                value={form.date}
+                max={today}
+                onChange={(e) => handleChange('date', e.target.value)}
+                required
+              />
+            </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-date">Date *</Label>
-            <Input
-              id="exp-date"
-              type="date"
-              value={form.date}
-              max={today}
-              onChange={(e) => handleChange('date', e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-vendor">Vendor</Label>
-            <Input
-              id="exp-vendor"
-              placeholder="e.g. Amazon Web Services"
-              value={form.vendor}
-              onChange={(e) => handleChange('vendor', e.target.value)}
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="exp-vendor">Vendor</Label>
+              <Input
+                id="exp-vendor"
+                placeholder="e.g. Amazon Web Services"
+                value={form.vendor}
+                onChange={(e) => handleChange('vendor', e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -189,20 +208,63 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label>Receipt / Bill</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,.pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null
+                if (f && f.size > 10 * 1024 * 1024) { setError('File must be under 10 MB.'); return }
+                setReceiptFile(f)
+                setError('')
+              }}
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 rounded-md border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors w-full"
+              >
+                <Paperclip className="h-4 w-4 shrink-0" />
+                {receiptFile ? (
+                  <span className="truncate font-medium text-gray-700">{receiptFile.name}</span>
+                ) : (
+                  <span>Attach receipt or bill (optional)</span>
+                )}
+              </button>
+              {receiptFile && (
+                <button
+                  type="button"
+                  onClick={() => { setReceiptFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                  className="text-xs text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+
           {error && (
             <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">{error}</p>
           )}
-
-          <SheetFooter className="px-0 pt-2">
-            <SheetClose render={<Button variant="outline" type="button" />}>
-              Cancel
-            </SheetClose>
-            <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? 'Saving...' : 'Save Expense'}
-            </Button>
-          </SheetFooter>
         </form>
-      </SheetContent>
-    </Sheet>
+
+        <DialogFooter>
+          <DialogClose render={<Button variant="outline" type="button" />}>
+            Cancel
+          </DialogClose>
+          <Button
+            type="button"
+            disabled={loading}
+            onClick={() => formRef.current?.requestSubmit()}
+          >
+            {loading ? 'Saving...' : 'Save Expense'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

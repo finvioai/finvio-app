@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, TrendingDown, TrendingUp, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
+import { Plus, TrendingDown, TrendingUp, AlertCircle, CheckCircle2, Loader2, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AddExpenseModal } from '@/components/modals/AddExpenseModal'
@@ -339,6 +339,7 @@ export default function TransactionsPage() {
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Recurrence</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Receipt</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Amount</th>
                 </tr>
               </thead>
@@ -467,6 +468,21 @@ function TransactionRow({
         <Badge variant="secondary" className="text-xs capitalize">
           {txn.source}
         </Badge>
+      </td>
+      <td className="px-4 py-3">
+        {txn.receipt_url ? (
+          <a
+            href={txn.receipt_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+          >
+            <Paperclip className="h-3.5 w-3.5" />
+            View
+          </a>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
       </td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
         <span className={cn('font-semibold', txn.type === 'expense' ? 'text-red-600' : 'text-green-600')}>

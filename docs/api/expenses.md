@@ -27,11 +27,14 @@ Submit an expense report.
   "category": "Meals & Entertainment",
   "date": "2026-05-02",
   "notes": "Sales team Q2 kickoff",
-  "submitter_name": "Jane Smith"
+  "submitter_name": "Jane Smith",
+  "receipt_url": "https://..."
 }
 ```
 
 Required: `title`, `amount`, `category`, `date`. Created with status `pending`.
+
+`receipt_url` is optional. Upload a file first via `POST /api/receipts` to obtain a URL, then pass it here.
 
 ---
 

@@ -64,6 +64,7 @@ const CreateSchema = z.object({
   recurrence: z.enum(['monthly', 'quarterly', 'annual', 'one_time']).optional(),
   notes: z.string().optional(),
   vendor: z.string().optional(),
+  receipt_url: z.string().url().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { type, amount, description, date, category, recurrence, notes, vendor } = parsed.data
+  const { type, amount, description, date, category, recurrence, notes, vendor, receipt_url } = parsed.data
 
   let resolvedCategory = category
   let categoryConfidence: string
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
       recurrence: recurrence ?? null,
       notes: notes ?? null,
       vendor: vendor ?? null,
+      receipt_url: receipt_url ?? null,
       source: 'manual',
       is_reviewed: !!category,
       created_by: user.id,

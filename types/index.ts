@@ -152,6 +152,7 @@ export interface CreateExpenseParams {
   date: string
   recurrence?: RecurrenceType
   notes?: string
+  receipt_url?: string
 }
 
 export interface CreateInvoiceParams {

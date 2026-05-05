@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { CheckCircle, XCircle, Loader2, Receipt, FileText, TrendingUp, FolderOpen } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { CheckCircle, XCircle, Loader2, Receipt, FileText, TrendingUp, FolderOpen, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   EXPENSE_CATEGORIES,
@@ -177,6 +177,8 @@ export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }
   const [errorMsg, setErrorMsg] = useState('')
   const [projectId, setProjectId] = useState('')
   const [projectName, setProjectName] = useState('')
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [category, setCategory] = useState<string>(() => {
     const p = action.params as CreateExpenseParams | AddIncomeParams
     return p.category ?? ''
@@ -198,6 +200,29 @@ export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }
 
   async function handleConfirm() {
     setStatus('loading')
+    setErrorMsg('')
+
+    let receiptUrl: string | undefined
+
+    if (action.type === 'create_expense' && receiptFile) {
+      const fd = new FormData()
+      fd.append('file', receiptFile)
+      try {
+        const uploadRes = await fetch('/api/receipts', { method: 'POST', body: fd })
+        if (!uploadRes.ok) {
+          const data = await uploadRes.json()
+          setErrorMsg(data.error ?? 'Receipt upload failed.')
+          setStatus('error')
+          return
+        }
+        const uploadData = await uploadRes.json()
+        receiptUrl = uploadData.receipt_url
+      } catch {
+        setErrorMsg('Network error uploading receipt.')
+        setStatus('error')
+        return
+      }
+    }
 
     const finalAction: PendingAction = {
       ...action,
@@ -210,6 +235,7 @@ export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }
         ...(action.type === 'add_income' && projectId
           ? { project_id: projectId, project_name: projectName }
           : {}),
+        ...(receiptUrl ? { receipt_url: receiptUrl } : {}),
       },
     }
 
@@ -254,6 +280,53 @@ export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }
         projectName={projectName}
         onProjectChange={handleProjectChange}
       />
+
+      {action.type === 'create_expense' && (
+        <div className="border-t border-gray-100 pt-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null
+              if (f && f.size > 10 * 1024 * 1024) {
+                setErrorMsg('File must be under 10 MB.')
+                setStatus('error')
+                return
+              }
+              setReceiptFile(f)
+            }}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={status === 'loading'}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+            >
+              <Paperclip className="h-3.5 w-3.5 shrink-0" />
+              {receiptFile ? (
+                <span className="truncate max-w-[180px] text-gray-700 font-medium">{receiptFile.name}</span>
+              ) : (
+                <span>Attach receipt (optional)</span>
+              )}
+            </button>
+            {receiptFile && (
+              <button
+                type="button"
+                onClick={() => {
+                  setReceiptFile(null)
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {status === 'error' && (
         <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-md">{errorMsg}</p>
