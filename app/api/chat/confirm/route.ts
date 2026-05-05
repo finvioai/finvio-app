@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
         date: p.date,
         recurrence: p.recurrence ?? null,
         notes: p.notes,
+        receipt_url: p.receipt_url ?? null,
         source: 'manual',
         is_reviewed: true,
       })

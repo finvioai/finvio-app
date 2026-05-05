@@ -15,33 +15,39 @@ import {
   Mail,
   Plug,
   Upload,
-  Settings,
   LogOut,
   Menu,
   X,
   ArrowLeftRight,
+  FolderOpen,
   BookOpen,
+  ChevronRight,
+  Scale,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/revenue', label: 'Revenue', icon: TrendingUp },
+const primaryItems = [
+  { href: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard },
+  { href: '/revenue',      label: 'Revenue',      icon: TrendingUp },
   { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
-  { href: '/expenses', label: 'Expenses', icon: Receipt },
-  { href: '/invoices', label: 'Invoices', icon: FileText },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/forecast', label: 'Forecast', icon: TrendingDown },
-  { href: '/advisor', label: 'AI Advisor', icon: Bot },
-  { href: '/scenarios', label: 'Scenarios', icon: FlaskConical },
+  { href: '/expenses',     label: 'Expenses',     icon: Receipt },
+  { href: '/invoices',     label: 'Invoices',     icon: FileText },
+  { href: '/reports',        label: 'Reports',        icon: BarChart3 },
+  { href: '/balance-sheet', label: 'Balance Sheet', icon: Scale },
+  { href: '/projects',      label: 'Projects',       icon: FolderOpen },
+  { href: '/advisor',      label: 'AI Advisor',   icon: Bot },
+  { href: '/connections',  label: 'Connections',  icon: Plug },
+]
+
+const moreItems = [
+  { href: '/forecast',         label: 'Forecast',         icon: TrendingDown },
+  { href: '/scenarios',        label: 'Scenarios',        icon: FlaskConical },
   { href: '/investor-updates', label: 'Investor Updates', icon: Mail },
-  { href: '/connections', label: 'Connections', icon: Plug },
-  { href: '/import', label: 'Import Data', icon: Upload },
-  { href: '/glossary', label: 'Glossary', icon: BookOpen },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/import',           label: 'Import Data',      icon: Upload },
+  { href: '/glossary',         label: 'Glossary',         icon: BookOpen },
 ]
 
 interface MobileNavProps {
@@ -54,6 +60,8 @@ export function MobileNav({ userEmail, orgName }: MobileNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const isMoreActive = moreItems.some(({ href }) => pathname === href || pathname.startsWith(href))
+  const [moreOpen, setMoreOpen] = useState(isMoreActive)
 
   async function handleSignOut() {
     setOpen(false)
@@ -95,7 +103,7 @@ export function MobileNav({ userEmail, orgName }: MobileNavProps) {
 
           {/* Nav */}
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-            {navItems.map(({ href, label, icon: Icon }) => {
+            {primaryItems.map(({ href, label, icon: Icon }) => {
               const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
               return (
                 <Link
@@ -104,9 +112,7 @@ export function MobileNav({ userEmail, orgName }: MobileNavProps) {
                   onClick={() => setOpen(false)}
                   className={cn(
                     'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
-                    active
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    active ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   )}
                 >
                   <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-blue-600' : 'text-gray-400')} />
@@ -114,6 +120,53 @@ export function MobileNav({ userEmail, orgName }: MobileNavProps) {
                 </Link>
               )
             })}
+
+            {/* More section */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setMoreOpen((v) => !v)}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+                  isMoreActive ? 'text-blue-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                )}
+              >
+                <ChevronRight
+                  className={cn(
+                    'h-4 w-4 shrink-0 transition-transform duration-200',
+                    moreOpen ? 'rotate-90' : 'rotate-0',
+                    isMoreActive ? 'text-blue-600' : 'text-gray-400'
+                  )}
+                />
+                More
+              </button>
+              <div
+                className={cn(
+                  'overflow-hidden transition-all duration-200',
+                  moreOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'
+                )}
+              >
+                <div className="space-y-0.5 pl-2 pt-0.5">
+                  {moreItems.map(({ href, label, icon: Icon }) => {
+                    const active = pathname === href || pathname.startsWith(href)
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+                          active ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        )}
+                      >
+                        <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-blue-600' : 'text-gray-400')} />
+                        {label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
           </nav>
 
           {/* Footer */}
