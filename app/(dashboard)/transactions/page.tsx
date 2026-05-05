@@ -239,18 +239,18 @@ export default function TransactionsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm [table-layout:fixed]">
               <thead>
                 <tr className="border-b border-gray-100 text-left">
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Recurrence</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Receipt</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Amount</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-16"></th>
+                  <th className="w-[90px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                  <th className="w-[170px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
+                  <th className="w-[140px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
+                  <th className="w-[110px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Recurrence</th>
+                  <th className="w-[110px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project</th>
+                  <th className="hidden xl:table-cell w-[80px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
+                  <th className="hidden xl:table-cell w-[70px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Receipt</th>
+                  <th className="w-[96px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Amount</th>
+                  <th className="w-[56px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -374,7 +374,7 @@ function TransactionRow({
     )}>
       <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(txn.date)}</td>
       <td className="px-4 py-3">
-        <p className="font-medium text-gray-900 truncate max-w-[200px]">{txn.description}</p>
+        <p className="font-medium text-gray-900 truncate">{txn.description}</p>
         {txn.vendor && <p className="text-xs text-gray-500">{txn.vendor}</p>}
       </td>
       <td className="px-4 py-3">
@@ -386,7 +386,7 @@ function TransactionRow({
             value={txn.category ?? ''}
             onChange={handleCategory}
             disabled={saving}
-            className="h-7 rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 max-w-[160px]"
+            className="h-7 w-full rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
           >
             {!txn.category && <option value="">Uncategorized</option>}
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -398,7 +398,7 @@ function TransactionRow({
           value={txn.recurrence ?? ''}
           onChange={handleRecurrence}
           disabled={saving}
-          className="h-7 rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 max-w-[120px]"
+          className="h-7 w-full rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
         >
           <option value="">Not set</option>
           {RECURRENCE_OPTIONS.map((o) => (
@@ -412,7 +412,7 @@ function TransactionRow({
             value={txnWithProject.project_id ?? ''}
             onChange={handleProject}
             disabled={saving}
-            className="h-7 rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 max-w-[140px]"
+            className="h-7 w-full rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
           >
             <option value="">—</option>
             {activeProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -423,12 +423,12 @@ function TransactionRow({
           <span className="text-xs text-gray-400">—</span>
         )}
       </td>
-      <td className="px-4 py-3">
+      <td className="hidden xl:table-cell px-4 py-3">
         <Badge variant="secondary" className="text-xs capitalize">
           {txn.source}
         </Badge>
       </td>
-      <td className="px-4 py-3">
+      <td className="hidden xl:table-cell px-4 py-3">
         {txn.receipt_url ? (
           <a
             href={txn.receipt_url}
