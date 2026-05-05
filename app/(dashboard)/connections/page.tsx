@@ -20,7 +20,7 @@ interface ProviderConfig {
 
 const PROVIDERS: ProviderConfig[] = [
   { id: 'stripe',   name: 'Stripe',      description: 'Sync charges, invoices, subscriptions and customer data', logo: '💳', syncRoute: '/api/sync/stripe' },
-  { id: 'plaid',    name: 'Plaid (Bank)', description: 'Connect your bank account for real-time transaction sync', logo: '🏦', syncRoute: '/api/sync/plaid' },
+  { id: 'plaid',    name: 'Plaid (Bank)', description: 'Connect your bank account for real-time transaction sync', logo: '🏦', comingSoon: true },
   { id: 'shopify',  name: 'Shopify',      description: 'Import paid orders and revenue from your Shopify store',  logo: '🛍', syncRoute: '/api/sync/shopify' },
   { id: 'paypal',   name: 'PayPal',       description: 'Sync PayPal transactions and settlements',                logo: '💰', syncRoute: '/api/sync/paypal' },
   { id: 'quickbooks', name: 'QuickBooks', description: 'Sync expenses, paid invoices and sales receipts from QuickBooks Online', logo: '📒', syncRoute: '/api/sync/quickbooks', oauthRedirect: true },

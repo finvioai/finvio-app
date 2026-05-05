@@ -12,13 +12,13 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.redirect(new URL('/login', request.url))
 
   const clientId = process.env.QB_CLIENT_ID
+  const origin = new URL(request.url).origin
+
   if (!clientId) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-    return NextResponse.redirect(`${appUrl}/connections?error=qb_not_configured`)
+    return NextResponse.redirect(new URL('/connections?error=qb_not_configured', origin))
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const redirectUri = `${appUrl}/api/connections/quickbooks/callback`
+  const redirectUri = `${origin}/api/connections/quickbooks/callback`
   const state = crypto.randomBytes(16).toString('hex')
 
   const params = new URLSearchParams({

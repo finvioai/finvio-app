@@ -12,36 +12,36 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state')
   const error = searchParams.get('error')
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const origin = new URL(request.url).origin
 
   if (error) {
-    return NextResponse.redirect(`${appUrl}/connections?error=qb_denied`)
+    return NextResponse.redirect(new URL('/connections?error=qb_denied', origin))
   }
 
   if (!code || !realmId || !state) {
-    return NextResponse.redirect(`${appUrl}/connections?error=qb_invalid_callback`)
+    return NextResponse.redirect(new URL('/connections?error=qb_invalid_callback', origin))
   }
 
   // Verify CSRF state
   const savedState = request.cookies.get('qb_oauth_state')?.value
   if (!savedState || state !== savedState) {
-    return NextResponse.redirect(`${appUrl}/connections?error=qb_state_mismatch`)
+    return NextResponse.redirect(new URL('/connections?error=qb_state_mismatch', origin))
   }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.redirect(`${appUrl}/login`)
+  if (!user) return NextResponse.redirect(new URL('/login', origin))
 
   const { data: member } = await supabase
     .from('org_members')
     .select('org_id')
     .eq('user_id', user.id)
     .single()
-  if (!member) return NextResponse.redirect(`${appUrl}/connections?error=qb_no_org`)
+  if (!member) return NextResponse.redirect(new URL('/connections?error=qb_no_org', origin))
 
   const clientId = process.env.QB_CLIENT_ID!
   const clientSecret = process.env.QB_CLIENT_SECRET!
-  const redirectUri = `${appUrl}/api/connections/quickbooks/callback`
+  const redirectUri = `${origin}/api/connections/quickbooks/callback`
 
   // Exchange authorization code for access + refresh tokens
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   })
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(`${appUrl}/connections?error=qb_token_exchange`)
+    return NextResponse.redirect(new URL('/connections?error=qb_token_exchange', origin))
   }
 
   const tokens = await tokenRes.json()
@@ -110,13 +110,13 @@ export async function GET(request: NextRequest) {
     .single()
 
   if (upsertError || !conn?.id) {
-    return NextResponse.redirect(`${appUrl}/connections?error=qb_save_failed`)
+    return NextResponse.redirect(new URL('/connections?error=qb_save_failed', origin))
   }
 
   // Auto-sync immediately after connecting
   await syncQuickBooksData(member.org_id, conn.id, supabase)
 
-  const response = NextResponse.redirect(`${appUrl}/connections?connected=quickbooks`)
+  const response = NextResponse.redirect(new URL('/connections?connected=quickbooks', origin))
   // Clear the CSRF cookie
   response.cookies.delete('qb_oauth_state')
   return response
