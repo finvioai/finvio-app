@@ -240,8 +240,8 @@ async function extractWriteAction(
   try {
     if (intent === 'create_expense') {
       const raw = await adapter.extractStructuredOutput<Record<string, unknown>>(
-        `Extract expense details from: "${message}"\nToday is ${today}. IMPORTANT: If no date is mentioned, use today's date (${today}) in YYYY-MM-DD format.\nValid categories: ${EXPENSE_CATEGORIES.join(', ')}\nExtract amount as a number (digits only, no $ or commas).\nFor recurrence: choose one of monthly|quarterly|annual|one_time based on clues in the message. Examples: "monthly Slack" → monthly, "annual AWS" → annual, "quarterly audit" → quarterly, "bought a laptop" → one_time. If unclear, leave null.`,
-        { title: 'string', amount: 'number', category: 'string', date: `YYYY-MM-DD (default to ${today} if not specified)`, recurrence: 'monthly|quarterly|annual|one_time (or null if unclear)', notes: 'string (optional)' }
+        `Extract expense details from this message: "${message}"\n\nToday is ${today}.\n\n- title: the specific vendor, service, or product name being paid for. Look for the name after "for" or after "expense for". Examples: "add $20 expense for ChatGPT" → "ChatGPT", "monthly Slack subscription" → "Slack", "AWS bill" → "AWS". NEVER use generic words like "expense", "cost", "fee", or "bill" as the title. If no vendor name is present, use a short descriptive title like "Monthly Expense".\n- amount: digits only, no $ or commas.\n- category: best match from: ${EXPENSE_CATEGORIES.join(', ')}\n- date: YYYY-MM-DD. Default to ${today} if not mentioned.\n- recurrence: scan for these words — "monthly" → monthly, "annual" or "yearly" → annual, "quarterly" → quarterly, "one-time" or "once" → one_time. Leave null only if no recurrence clue exists.\n- notes: optional additional context.`,
+        { title: 'string (vendor/service name, e.g. "ChatGPT", "AWS")', amount: 'number', category: 'string', date: `YYYY-MM-DD (default ${today})`, recurrence: 'monthly|quarterly|annual|one_time (or null)', notes: 'string (optional)' }
       )
       if (!raw.amount) {
         const m = message.match(/\$?([\d,]+(?:\.\d{1,2})?)\b/)
