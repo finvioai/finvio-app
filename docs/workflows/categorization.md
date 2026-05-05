@@ -74,13 +74,15 @@ AI-categorized transactions always get `confidence: 'low'` and `method: 'ai'`, w
 
 ## Confidence Levels
 
-| Confidence | Source |
-|-----------|--------|
-| `high` | User override or user manually set during PATCH |
-| `high` | Rule match (org-specific or system-wide) |
-| `low` | AI fallback |
+| Confidence | Source | UI treatment |
+|-----------|--------|---|
+| `high` | User override or user manually set during PATCH | No badge |
+| `high` | Rule match (org-specific or system-wide) | No badge |
+| `low` | AI fallback (best guess from allowed category list) | ⚠ badge on transaction row |
 
-The Transactions page review queue surfaces all transactions with `is_reviewed = false`, sorted by confidence so low-confidence AI guesses appear first.
+**All transactions participate in calculations regardless of confidence.** Low-confidence transactions show a ⚠ badge and appear in the review section so users can verify or correct the category. There is no state where a transaction exists but is excluded from financial totals — the review queue is a correction tool, not a gate.
+
+The AI fallback always picks a valid category from the allowed list. The worst outcome is "Other Income" or "Other Expense" — never "uncategorized" or null. This ensures the dashboard always shows complete data, even for transactions the system couldn't confidently classify.
 
 ---
 

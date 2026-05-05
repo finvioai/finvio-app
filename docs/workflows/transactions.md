@@ -30,7 +30,8 @@ Transactions are the core data unit in Finvio. Everything financial — income, 
   created_by?: uuid,        // user_id for manual entries
   revenue_type?: 'recurring' | 'one_time' | 'project' | 'milestone',  // income classification
   project_id?: uuid,        // optional link to a project row
-  created_at: timestamp
+  created_at: timestamp,
+  deleted_at?: timestamp    // null = active; non-null = soft deleted (manual/invoice only)
 }
 ```
 
@@ -124,44 +125,113 @@ Updates `category`, `is_reviewed`, `notes`, `vendor`, or `project_id`. When cate
 
 ---
 
-## The Review Queue
+## Review Queue — notification only, not a gate
 
-### What Goes In
+**Key design principle:** `is_reviewed` is a UI signal, not a data filter. Every transaction — regardless of `is_reviewed` or category confidence — is included in all calculations (dashboard, revenue analytics, P&L, forecast) immediately after it is created.
 
-Every transaction with `is_reviewed = false` is in the review queue. This covers:
-- All synced transactions (Stripe, Plaid, PayPal, Shopify)
-- CSV imports without a category column
-- Manual entries where no category was specified
+The review queue exists so users can correct poor categorizations. It does not hold transactions out of the financial picture.
 
-### What Gets Auto-Approved
+### What `is_reviewed = false` means
 
-- Manual entries where the user specified a category
-- AI Chat-created transactions (user explicitly confirmed)
-- Invoice-created income transactions
+A transaction starts unreviewed (`is_reviewed = false`) when:
+- It came from an integration sync (Stripe, Plaid, PayPal, Shopify, QuickBooks)
+- It came from a CSV import without a mapped category column
+- It was created manually without a category specified
 
-### The Review UI
+It starts reviewed (`is_reviewed = true`) when:
+- The user specified a category during manual entry
+- The AI Chat created it (user explicitly confirmed the action)
+- It was created from an invoice payment
+- The user clicks "Done" or edits the category in the review UI
+
+### Categorization on unreviewed transactions
+
+All transactions — even those with `is_reviewed = false` — have a category. The categorization engine always assigns one:
+
+- **Rule or override match** → correct category, `confidence = 'high'`
+- **AI fallback** → best guess from the allowed list, `confidence = 'low'`, flagged with ⚠
+- **AI failure** → "Other Income" or "Other Expense", `confidence = 'low'`, flagged with ⚠
+
+There is no "uncategorized" state. Every transaction has a category and participates in calculations. Low-confidence transactions show a warning badge so users know to verify them.
+
+### Notification banner
+
+The Transactions page shows a banner when there are unreviewed transactions:
+
+> ⚠ **22 transactions need review** — categories were guessed automatically. Review them to improve accuracy.
+
+The count comes from `GET /api/transactions?is_reviewed=false&limit=1` (just the count, not the full list). Clicking the banner scrolls to the review section.
+
+### The review UI
 
 **File:** [app/(dashboard)/transactions/page.tsx](../../app/(dashboard)/transactions/page.tsx)
 
 The Transactions page has two sections:
 
-**Review Queue (top):**
-- Yellow-highlighted rows with `is_reviewed = false`
-- Sorted by confidence (low confidence AI guesses first)
-- Each row shows: description, date, amount, confidence badge, category dropdown
-- "Done" button → PATCH `{is_reviewed: true}` (with whatever category is selected)
-- Bulk categorization available
+**Review section (top, collapsible):**
+- Visible only when unreviewed transactions exist
+- Low-confidence AI guesses sorted first
+- Each row shows: description, date, amount, ⚠ badge for low confidence, category dropdown
+- "Done" button → PATCH `{is_reviewed: true}` with whatever category is selected
+- Bulk mark-as-reviewed available
 
-**Transaction Table (bottom):**
-- All reviewed transactions in a standard table
-- Columns: date, description, category (editable dropdown), source badge, amount
-- Clicking category dropdown → PATCH immediately
+**Transaction table (below):**
+- All transactions — reviewed and unreviewed together
+- Unreviewed rows show a subtle ⚠ icon next to their category
+- Category dropdown always editable inline → PATCH immediately
 
 Both sections load from `GET /api/transactions?limit=200` on page mount.
 
 ---
 
+## Soft delete (manual records only)
+
+Users can delete transactions they created manually. Imported transactions are not individually deletable.
+
+### What can be deleted
+
+| Source | Deletable? |
+|---|---|
+| `manual` | Yes — user created it |
+| `invoice` | Yes — user created the invoice |
+| `stripe`, `plaid`, `paypal`, `shopify`, `quickbooks`, `csv` | No — use the integration disconnect flow to remove imported data |
+
+### Soft delete mechanics
+
+Deletion sets `deleted_at = NOW()` on the row. The row is never physically removed.
+
+All queries that serve UI and calculations filter `WHERE deleted_at IS NULL`. Soft-deleted rows are invisible to users but remain in the database for audit purposes.
+
+**Endpoint:** `DELETE /api/transactions/:id` — returns 403 if the transaction's source is not `manual` or `invoice`.
+
+---
+
+## Integration disconnect — data retention policy
+
+When a user disconnects an integration (e.g. QuickBooks), the default behavior is to **retain** all previously imported data. This preserves historical records, P&L history, and reconciliation state.
+
+### At disconnect time
+
+The UI presents an explicit choice:
+
+> **Remove QuickBooks data?**  
+> Your imported transactions, income, and expenses from QuickBooks will remain in Finvio. This preserves your historical records.  
+> [ Keep imported data ] (default)  [ Remove imported data ]
+
+Choosing **Remove imported data** soft-deletes all transactions where `source = 'quickbooks'` (or the relevant provider) and `org_id = <this org>`. The connection row in `connections` is set to `status = 'disconnected'` in both cases.
+
+### Why keep by default
+
+- Accounting history should never disappear automatically
+- Users may reconnect later and need continuity
+- Removing imported data can silently break P&L reports, investor updates, and scenario models that reference historical periods
+- If data were deleted automatically on disconnect, a mis-click would destroy months of accounting history
+
+---
+
 ## Calculating Totals
+
+All transactions — reviewed and unreviewed, high and low confidence — are included in totals. The only exclusion is soft-deleted rows (`deleted_at IS NOT NULL`).
 
 The Transactions page computes totals client-side from the fetched list:
 
@@ -177,7 +247,7 @@ const totalExpenses = transactions
 const net = totalIncome - totalExpenses
 ```
 
-These appear in three summary cards at the top of the page.
+These appear in three summary cards at the top of the page. Dashboard, revenue analytics, P&L, and forecast pages use the same unfiltered dataset (excluding soft-deleted rows).
 
 ---
 

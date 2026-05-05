@@ -80,7 +80,6 @@ function ProviderCard({
   onConnect: (providerId: string) => void
 }) {
   const [syncing, setSyncing] = useState(false)
-  const [disconnecting, setDisconnecting] = useState(false)
   const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number } | null>(null)
   const [syncError, setSyncError] = useState('')
 
@@ -101,24 +100,6 @@ function ProviderCard({
       onSync(provider.id)
     } finally {
       setSyncing(false)
-    }
-  }
-
-  async function handleDisconnect() {
-    setDisconnecting(true)
-    const routeMap: Record<string, string> = {
-      stripe: '/api/connections/stripe',
-      plaid: '/api/connections/plaid',
-      shopify: '/api/connections/shopify',
-      paypal: '/api/connections/paypal',
-      quickbooks: '/api/connections/quickbooks',
-    }
-    try {
-      const url = routeMap[provider.id]
-      if (url) await fetch(url, { method: 'DELETE' })
-      onDisconnect(provider.id)
-    } finally {
-      setDisconnecting(false)
     }
   }
 
@@ -163,8 +144,8 @@ function ProviderCard({
                 {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 <span className="ml-1.5">{syncing ? 'Syncing…' : 'Sync Now'}</span>
               </Button>
-              <Button size="sm" variant="outline" onClick={handleDisconnect} disabled={disconnecting} className="border-red-200 text-red-600 hover:bg-red-50">
-                {disconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unplug className="h-3.5 w-3.5" />}
+              <Button size="sm" variant="outline" onClick={() => onDisconnect(provider.id)} className="border-red-200 text-red-600 hover:bg-red-50">
+                <Unplug className="h-3.5 w-3.5" />
                 <span className="ml-1.5">Disconnect</span>
               </Button>
             </>
@@ -172,7 +153,7 @@ function ProviderCard({
             // Plaid: credentials saved, still need bank link
             <>
               <Button size="sm" onClick={() => onConnect(provider.id)}>Connect Bank Account</Button>
-              <Button size="sm" variant="outline" onClick={handleDisconnect} disabled={disconnecting} className="border-red-200 text-red-600 hover:bg-red-50">
+              <Button size="sm" variant="outline" onClick={() => onDisconnect(provider.id)} className="border-red-200 text-red-600 hover:bg-red-50">
                 <span>Remove</span>
               </Button>
             </>
@@ -230,6 +211,9 @@ export default function ConnectionsPage() {
   const [modalError, setModalError] = useState('')
   const [pageError, setPageError] = useState('')
   const [pageSuccess, setPageSuccess] = useState('')
+  const [disconnectTarget, setDisconnectTarget] = useState<{ provider: string; label: string } | null>(null)
+  const [removeData, setRemoveData] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
 
   // Stripe
   const [stripeKey, setStripeKey] = useState('')
@@ -340,7 +324,29 @@ export default function ConnectionsPage() {
 
   function handleSync(providerId: string) { fetchConnections() }
   function handleDisconnect(providerId: string) {
-    setConnections((prev) => prev.map((c) => c.provider === providerId ? { ...c, status: 'disconnected' } : c))
+    const providerConfig = PROVIDERS.find((p) => p.id === providerId)
+    setRemoveData(false)
+    setDisconnectTarget({ provider: providerId, label: providerConfig?.name ?? providerId })
+  }
+
+  async function performDisconnect() {
+    if (!disconnectTarget) return
+    setDisconnecting(true)
+    const routeMap: Record<string, string> = {
+      stripe: '/api/connections/stripe',
+      plaid: '/api/connections/plaid',
+      shopify: '/api/connections/shopify',
+      paypal: '/api/connections/paypal',
+      quickbooks: '/api/connections/quickbooks',
+    }
+    try {
+      const url = routeMap[disconnectTarget.provider]
+      if (url) await fetch(`${url}?removeData=${removeData}`, { method: 'DELETE' })
+      setConnections((prev) => prev.map((c) => c.provider === disconnectTarget.provider ? { ...c, status: 'disconnected' } : c))
+      setDisconnectTarget(null)
+    } finally {
+      setDisconnecting(false)
+    }
   }
 
   // ─── Submit handlers ────────────────────────────────────────────────────────
@@ -523,6 +529,40 @@ export default function ConnectionsPage() {
               {modalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect PayPal'}
             </Button>
             <Button variant="outline" onClick={closeModal} disabled={modalLoading}>Cancel</Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Disconnect Confirmation Modal */}
+      {disconnectTarget && (
+        <Modal title={`Disconnect ${disconnectTarget.label}?`} onClose={() => !disconnecting && setDisconnectTarget(null)}>
+          <p className="text-sm text-gray-600">
+            What should happen to the transactions imported from <strong>{disconnectTarget.label}</strong>?
+          </p>
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input type="radio" name="removeData" checked={!removeData} onChange={() => setRemoveData(false)}
+                className="mt-0.5 h-4 w-4 text-blue-600" />
+              <div>
+                <span className="text-sm font-medium text-gray-900">Keep imported data</span>
+                <p className="text-xs text-gray-500 mt-0.5">Preserves your financial history — recommended for reporting continuity</p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input type="radio" name="removeData" checked={removeData} onChange={() => setRemoveData(true)}
+                className="mt-0.5 h-4 w-4 text-red-600" />
+              <div>
+                <span className="text-sm font-medium text-gray-900">Remove imported data</span>
+                <p className="text-xs text-gray-500 mt-0.5">Deletes all transactions synced from {disconnectTarget.label} — cannot be undone</p>
+              </div>
+            </label>
+          </div>
+          <div className="flex gap-3 pt-1">
+            <Button onClick={performDisconnect} disabled={disconnecting}
+              className={removeData ? 'flex-1 bg-red-600 hover:bg-red-700' : 'flex-1'}>
+              {disconnecting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Disconnect'}
+            </Button>
+            <Button variant="outline" onClick={() => setDisconnectTarget(null)} disabled={disconnecting}>Cancel</Button>
           </div>
         </Modal>
       )}

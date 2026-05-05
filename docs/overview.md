@@ -11,6 +11,7 @@ Finvio is a financial intelligence platform for SaaS companies, SMBs, and projec
 | Dashboard | Adaptive KPI cards based on business model (MRR/ARR/Runway for SaaS; Revenue/Profit/Cash for SMB; Active Projects for project-based), 6-month revenue trend |
 | Revenue Analytics | MRR trend, by-source breakdown, customer table, and revenue-by-type breakdown (recurring / one-time / project / milestone) |
 | Revenue Classification | Transactions auto-tagged with `revenue_type` from category; powers business model detection and revenue breakdown analytics |
+| Categorization Review | All transactions are included in calculations immediately — the review queue is a correction tool, not a gate. Low-confidence or AI-guessed categories show an ⚠ badge; a notification banner surfaces the count of items needing review. Users correct categories at their leisure without their financials being incomplete. |
 | Business Model Detection | Inferred dynamically from data patterns — no manual mode switch; adapts dashboard, forecast, and AI to the actual business type |
 | P&L Reports | Month-by-month profit & loss with vs-prior-month comparison and CSV export |
 | Forecast | Model-aware: MRR growth rate slider for SaaS; historical trend-based projection for SMB/project businesses |
@@ -18,8 +19,10 @@ Finvio is a financial intelligence platform for SaaS companies, SMBs, and projec
 | Scenarios | Hire / Growth / Fundraise scenario modeling with before/after runway comparison |
 | Investor Updates | AI-generated draft updates with editable textarea and save-to-history |
 | Integrations | Stripe, Plaid (bank link), Shopify, PayPal, QuickBooks Online (OAuth), CSV/XLSX import |
+| Integration Disconnect Policy | Imported data is retained by default when an integration is disconnected; a "Keep imported data / Remove imported data" choice is presented at disconnect time. Keeping data preserves historical records and reconciliation. |
 | Invoices | Create, send, mark paid → auto-creates income transaction |
 | Expenses | Submit, approve/reject → auto-creates expense transaction; optional receipt/bill file attachment (PDF or image) stored in Supabase Storage and viewable inline on Expenses and Transactions pages |
+| Delete (manual records) | Users can soft-delete manually created income transactions, expenses, and invoices (`source = 'manual'` or `'invoice'`). Individually deleting imported transactions is not supported — remove them via the disconnect flow instead. Soft-deleted rows are hidden from all UI and calculations but retained in the database. |
 | Receipt Uploads | File upload endpoint (`POST /api/receipts`) stores PDFs and images in `expense-receipts` Supabase Storage bucket; `receipt_url` linked on transactions and expense reports |
 | Balance Sheet | Simplified balance sheet page showing cash position, accounts receivable, recurring liabilities, and estimated equity derived from transaction data |
 | Landing Page | Public marketing landing page at `/` — unauthenticated visitors see the landing page; authenticated users are redirected to `/dashboard` |

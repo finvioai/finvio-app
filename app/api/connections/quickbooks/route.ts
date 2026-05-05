@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 }
 
 // DELETE — disconnect QuickBooks
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -63,6 +63,15 @@ export async function DELETE() {
     })
     .eq('org_id', member.org_id)
     .eq('provider', 'quickbooks')
+
+  if (request.nextUrl.searchParams.get('removeData') === 'true') {
+    await supabase
+      .from('transactions')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('org_id', member.org_id)
+      .eq('source', 'quickbooks')
+      .is('deleted_at', null)
+  }
 
   return NextResponse.json({ disconnected: true })
 }

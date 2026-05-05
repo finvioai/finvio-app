@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { categorize, saveOverride } from '@/lib/categorization/rules'
+import { writeAuditLog } from '@/lib/audit'
 import { z } from 'zod'
 import type { TablesUpdate } from '@/types/database'
 
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
     .from('transactions')
     .select('*')
     .eq('org_id', member.org_id)
+    .is('deleted_at', null)
     .order('date', { ascending: false })
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
@@ -206,4 +208,66 @@ export async function PATCH(request: NextRequest) {
   }
 
   return NextResponse.json({ transaction: txn })
+}
+
+// ─── DELETE /api/transactions ─────────────────────────────────────────────────
+// Soft-deletes a manually-created transaction. Imported transactions (source ≠
+// 'manual' | 'invoice') are rejected with 403 — remove them via the integration
+// disconnect flow instead.
+
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: member } = await supabase
+    .from('org_members')
+    .select('org_id')
+    .eq('user_id', user.id)
+    .single()
+  if (!member) return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
+
+  let id: string
+  try {
+    const body = await request.json() as { id?: string }
+    if (!body.id) throw new Error()
+    id = body.id
+  } catch {
+    return NextResponse.json({ error: 'Missing transaction id' }, { status: 400 })
+  }
+
+  const { data: txn } = await supabase
+    .from('transactions')
+    .select('id, source, amount, type, description, category')
+    .eq('id', id)
+    .eq('org_id', member.org_id)
+    .is('deleted_at', null)
+    .single()
+
+  if (!txn) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
+
+  if (!['manual', 'invoice'].includes(txn.source)) {
+    return NextResponse.json(
+      { error: 'Only manually created transactions can be deleted. To remove imported data, disconnect the integration.' },
+      { status: 403 }
+    )
+  }
+
+  await supabase
+    .from('transactions')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+
+  await writeAuditLog({
+    supabase,
+    orgId: member.org_id,
+    userId: user.id,
+    entityType: 'transaction',
+    entityId: id,
+    action: 'deleted',
+    beforeState: { source: txn.source, amount: txn.amount, type: txn.type, description: txn.description, category: txn.category },
+    request,
+  })
+
+  return NextResponse.json({ deleted: true })
 }
