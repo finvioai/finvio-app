@@ -26,6 +26,48 @@ export async function POST(request: NextRequest) {
     .single()
   if (!member) return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
 
+  // ── Quota check ───────────────────────────────────────────────────────────
+  const dailyQuota = parseInt(process.env.VOICE_DAILY_QUOTA_SECONDS ?? '300')
+  const monthlyQuota = parseInt(process.env.VOICE_MONTHLY_QUOTA_SECONDS ?? '3600')
+  const today = new Date().toISOString().slice(0, 10)
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    .toISOString()
+    .slice(0, 10)
+
+  const [{ data: daily }, { data: monthly }] = await Promise.all([
+    supabase
+      .from('voice_usage')
+      .select('duration_seconds')
+      .eq('user_id', user.id)
+      .eq('date', today)
+      .maybeSingle(),
+    supabase
+      .from('voice_usage')
+      .select('duration_seconds')
+      .eq('user_id', user.id)
+      .gte('date', monthStart),
+  ])
+
+  const dailyUsed = (daily?.duration_seconds as number) ?? 0
+  const monthlyUsed = ((monthly ?? []) as Array<{ duration_seconds: number }>).reduce(
+    (s, r) => s + r.duration_seconds,
+    0
+  )
+
+  if (dailyUsed >= dailyQuota || monthlyUsed >= monthlyQuota) {
+    return NextResponse.json(
+      {
+        error: dailyUsed >= dailyQuota ? 'Daily voice quota reached.' : 'Monthly voice quota reached.',
+        dailyUsedSeconds: dailyUsed,
+        dailyQuotaSeconds: dailyQuota,
+        monthlyUsedSeconds: monthlyUsed,
+        monthlyQuotaSeconds: monthlyQuota,
+      },
+      { status: 429 }
+    )
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   let formData: FormData
   try {
     formData = await request.formData()
@@ -70,11 +112,21 @@ export async function POST(request: NextRequest) {
       file,
       model: 'whisper-1',
       response_format: 'verbose_json',
-    }) as unknown as { text: string; segments?: Array<{ no_speech_prob: number }> }
+    }) as unknown as { text: string; duration?: number; segments?: Array<{ no_speech_prob: number }> }
 
     const segs = result.segments ?? []
     const allSilence = segs.length > 0 && segs.every((s) => s.no_speech_prob > 0.6)
     if (allSilence) return NextResponse.json({ text: '' })
+
+    // ── Log duration ──────────────────────────────────────────────────────
+    const actualSeconds = result.duration ?? 0
+    if (actualSeconds > 0) {
+      await supabase.from('voice_usage').upsert(
+        { user_id: user.id, date: today, duration_seconds: dailyUsed + actualSeconds },
+        { onConflict: 'user_id,date' }
+      )
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     return NextResponse.json({ text: result.text ?? '' })
   } catch (err) {

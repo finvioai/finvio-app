@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   const clientId = process.env.QB_CLIENT_ID!
   const clientSecret = process.env.QB_CLIENT_SECRET!
-  const redirectUri = `${origin}/api/connections/quickbooks/callback`
+  const redirectUri = process.env.QB_REDIRECT_URI!
 
   // Exchange authorization code for access + refresh tokens
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')

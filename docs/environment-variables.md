@@ -74,11 +74,9 @@ AI keys are provided by the platform — users do not enter them. The AI model i
 | `QB_CLIENT_ID` | QuickBooks app client ID from developer.intuit.com |
 | `QB_CLIENT_SECRET` | QuickBooks app client secret |
 | `QB_ENVIRONMENT` | `sandbox` (default) or `production` — controls which QB API endpoint is used |
+| `QB_REDIRECT_URI` | Full callback URL registered in Intuit developer portal. Local: `http://localhost:3000/api/connections/quickbooks/callback`. Production: `https://yourdomain.com/api/connections/quickbooks/callback`. Both must be registered as allowed Redirect URIs in the Intuit app. |
 
-**Redirect URI to register in QuickBooks developer portal:**
-```
-https://yourdomain.com/api/connections/quickbooks/callback
-```
+The redirect URI is read directly from this variable in both the auth-initiation and token-exchange routes — **never hardcoded**. To switch environments, change this variable only.
 
 **Required OAuth scopes:**
 ```
@@ -91,8 +89,18 @@ com.intuit.quickbooks.accounting
 |---|---|
 | `CRON_SECRET` | Secret token Vercel sends in `Authorization: Bearer <secret>` header to cron routes. Generate with `openssl rand -hex 32`. |
 
+## Optional — Voice quota (server Whisper)
+
+| Variable | Default | Description |
+|---|---|---|
+| `VOICE_DAILY_QUOTA_SECONDS` | `300` | Max seconds of server-side Whisper per user per day (~$0.03/user/day at cap) |
+| `VOICE_MONTHLY_QUOTA_SECONDS` | `3600` | Max seconds of server-side Whisper per user per month (~$0.36/user/month at cap) |
+
+Over-quota users on capable devices are routed to in-browser WASM (Xenova/whisper-tiny). Low-end devices get a hard block.
+
 ## App config
 
 | Variable | Description |
 |---|---|
-| `NEXT_PUBLIC_APP_URL` | Public base URL (e.g. `https://app.finvio.ai`) — used for OAuth redirect URIs |
+| `NEXT_PUBLIC_APP_URL` | Public base URL (e.g. `https://app.finvio.ai`) — used for display only |
+| `CRON_SECRET` | Secret token Vercel includes in `Authorization: Bearer` header on cron calls. Generate with `openssl rand -hex 32`. |
