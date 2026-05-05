@@ -68,6 +68,7 @@ export async function getMRR(
     .from('transactions')
     .select('amount, recurrence')
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .eq('type', 'income')
     .neq('recurrence', 'one_time')
     .gte('date', targetMonth)
@@ -109,6 +110,7 @@ export async function getBurnRate(
     .from('transactions')
     .select('amount, date, recurrence')
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .eq('type', 'expense')
     .gte('date', since12)
 
@@ -208,6 +210,7 @@ export async function getCashBalance(orgId: string): Promise<{ cash: number; war
     .from('transactions')
     .select('amount, type')
     .eq('org_id', orgId)
+    .is('deleted_at', null)
 
   if (!txns || txns.length === 0) {
     warnings.push('No transaction data found. Cash balance cannot be calculated.')
@@ -279,6 +282,7 @@ export async function getPnL(
     .from('transactions')
     .select('amount, type, category')
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .gte('date', month)
     .lt('date', nextMonthStr)
 
@@ -429,12 +433,14 @@ export async function getDataCompleteness(orgId: string): Promise<DataCompletene
     .from('transactions')
     .select('id', { count: 'exact', head: true })
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .eq('source', 'manual')
 
   const { count: csvCount } = await supabase
     .from('transactions')
     .select('id', { count: 'exact', head: true })
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .eq('source', 'csv')
 
   const hasManualEntries = (manualCount ?? 0) > 0
@@ -499,6 +505,7 @@ export async function inferBusinessModel(orgId: string): Promise<BusinessModelRe
     .from('transactions')
     .select('revenue_type, category')
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .eq('type', 'income')
     .gte('date', sinceDate)
 
@@ -542,6 +549,7 @@ export async function getTotalRevenue(
     .from('transactions')
     .select('amount')
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .eq('type', 'income')
     .gte('date', targetMonth)
     .lt('date', nextMonth.toISOString().split('T')[0])
@@ -572,6 +580,7 @@ export async function getGrossProfit(
     .from('transactions')
     .select('amount, type')
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .gte('date', targetMonth)
     .lt('date', nextMonthStr)
 
@@ -619,6 +628,7 @@ export async function getRevenueByType(
     .from('transactions')
     .select('amount, revenue_type')
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .eq('type', 'income')
     .gte('date', targetMonth)
     .lt('date', nextMonth.toISOString().split('T')[0])
@@ -717,6 +727,7 @@ export async function getProjectSummary(orgId: string): Promise<ProjectSummary[]
       .from('transactions')
       .select('amount, type')
       .eq('project_id', project.id)
+      .is('deleted_at', null)
 
     const collected = txns?.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount ?? 0), 0) ?? 0
     const expenses  = txns?.filter(t => t.type === 'expense').reduce((s, t) => s + (t.amount ?? 0), 0) ?? 0

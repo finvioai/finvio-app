@@ -1006,6 +1006,7 @@ export type Database = {
           currency: string
           customer_id: string | null
           date: string
+          deleted_at: string | null
           description: string | null
           id: string
           invoice_id: string | null
@@ -1040,6 +1041,7 @@ export type Database = {
           currency?: string
           customer_id?: string | null
           date: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           invoice_id?: string | null
@@ -1074,6 +1076,7 @@ export type Database = {
           currency?: string
           customer_id?: string | null
           date?: string
+          deleted_at?: string | null
           description?: string | null
           id?: string
           invoice_id?: string | null

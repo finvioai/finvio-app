@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
   })
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -90,6 +90,15 @@ export async function DELETE() {
     .update({ status: 'disconnected', encrypted_access_token: null })
     .eq('org_id', member.org_id)
     .eq('provider', 'stripe')
+
+  if (request.nextUrl.searchParams.get('removeData') === 'true') {
+    await supabase
+      .from('transactions')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('org_id', member.org_id)
+      .eq('source', 'stripe')
+      .is('deleted_at', null)
+  }
 
   return NextResponse.json({ disconnected: true })
 }
