@@ -373,9 +373,16 @@ function TransactionRow({
       needsReview && 'bg-amber-50/40'
     )}>
       <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(txn.date)}</td>
-      <td className="px-4 py-3">
-        <p className="font-medium text-gray-900 truncate" title={txn.description ?? undefined}>{txn.description}</p>
-        {txn.vendor && <p className="text-xs text-gray-500">{txn.vendor}</p>}
+      <td className="px-4 py-3 max-w-0">
+        <div className="relative group/desc">
+          <p className="font-medium text-gray-900 truncate">{txn.description}</p>
+          {txn.description && (
+            <div className="pointer-events-none absolute z-50 left-0 top-full mt-1 hidden group-hover/desc:block bg-gray-900 text-white text-xs rounded px-2 py-1.5 whitespace-normal max-w-xs shadow-lg">
+              {txn.description}
+            </div>
+          )}
+        </div>
+        {txn.vendor && <p className="text-xs text-gray-500 truncate">{txn.vendor}</p>}
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
