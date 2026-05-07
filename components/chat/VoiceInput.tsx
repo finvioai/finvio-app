@@ -53,16 +53,17 @@ function isBraveBrowser(): boolean {
 // Returns false when the audio blob is essentially silent (RMS below speech threshold).
 // Prevents sending dead-air recordings to Whisper, which would hallucinate.
 async function hasAudioSignal(blob: Blob): Promise<boolean> {
+  const ctx = new AudioContext()
   try {
-    const ctx = new AudioContext()
     const audio = await ctx.decodeAudioData(await blob.arrayBuffer())
-    void ctx.close()
     const ch = audio.getChannelData(0)
     let sum = 0
     for (let i = 0; i < ch.length; i++) sum += ch[i] * ch[i]
     return Math.sqrt(sum / ch.length) > 0.004
   } catch {
     return true // analysis failed — let the server decide
+  } finally {
+    void ctx.close()
   }
 }
 
@@ -98,10 +99,11 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
   // On Brave: fetch routing decision and pre-warm WASM model if needed
   useEffect(() => {
     if (!isBraveBrowser()) return
+    const controller = new AbortController()
     const cores = navigator.hardwareConcurrency ?? 4
     const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4
     const lowEnd = cores < 4 || mem < 4
-    fetch(`/api/chat/voice-route?lowEndDevice=${lowEnd}`)
+    fetch(`/api/chat/voice-route?lowEndDevice=${lowEnd}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((data: VoiceMode) => {
         voiceModeRef.current = { mode: data.mode, serverFallback: data.serverFallback }
@@ -109,7 +111,8 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
           import('@/lib/voice/transcriber').then(({ initModel }) => initModel()).catch(() => {})
         }
       })
-      .catch(() => {}) // routing failure → stay on server path
+      .catch(() => {}) // routing failure or abort → stay on server path
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {

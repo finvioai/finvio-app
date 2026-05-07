@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { runStripePullSync } from '@/lib/sync/stripe'
 import { syncPlaidTransactions } from '@/lib/sync/plaid'
 import { reconcileOrgTransactions } from '@/lib/sync/reconciliation'
+import { syncGmailTransactions } from '@/lib/sync/gmail'
+import { syncOutlookTransactions } from '@/lib/sync/outlook'
 
 // Vercel Cron — runs daily at 02:00 UTC
 // Vercel injects Authorization: Bearer <CRON_SECRET>
@@ -19,7 +21,7 @@ export async function GET(request: NextRequest) {
   const { data: connections, error } = await supabase
     .from('connections')
     .select('id, org_id, provider')
-    .in('provider', ['stripe', 'plaid'])
+    .in('provider', ['stripe', 'plaid', 'gmail', 'outlook'])
     .eq('status', 'active')
 
   if (error) {
@@ -50,6 +52,12 @@ export async function GET(request: NextRequest) {
       } else if (conn.provider === 'plaid') {
         const result = await syncPlaidTransactions(conn.org_id, conn.id, supabase)
         results.push({ org_id: conn.org_id, provider: 'plaid', ...result })
+      } else if (conn.provider === 'gmail') {
+        const result = await syncGmailTransactions(conn.org_id, conn.id, supabase)
+        results.push({ org_id: conn.org_id, provider: 'gmail', ...result })
+      } else if (conn.provider === 'outlook') {
+        const result = await syncOutlookTransactions(conn.org_id, conn.id, supabase)
+        results.push({ org_id: conn.org_id, provider: 'outlook', ...result })
       }
     } catch (err) {
       results.push({

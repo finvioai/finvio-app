@@ -374,7 +374,7 @@ function TransactionRow({
     )}>
       <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(txn.date)}</td>
       <td className="px-4 py-3">
-        <p className="font-medium text-gray-900 truncate">{txn.description}</p>
+        <p className="font-medium text-gray-900 truncate" title={txn.description}>{txn.description}</p>
         {txn.vendor && <p className="text-xs text-gray-500">{txn.vendor}</p>}
       </td>
       <td className="px-4 py-3">
