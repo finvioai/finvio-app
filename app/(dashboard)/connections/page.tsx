@@ -24,6 +24,8 @@ const PROVIDERS: ProviderConfig[] = [
   { id: 'shopify',  name: 'Shopify',      description: 'Import paid orders and revenue from your Shopify store',  logo: '🛍', syncRoute: '/api/sync/shopify' },
   { id: 'paypal',   name: 'PayPal',       description: 'Sync PayPal transactions and settlements',                logo: '💰', syncRoute: '/api/sync/paypal' },
   { id: 'quickbooks', name: 'QuickBooks', description: 'Sync expenses, paid invoices and sales receipts from QuickBooks Online', logo: '📒', syncRoute: '/api/sync/quickbooks', oauthRedirect: true },
+  { id: 'gmail',    name: 'Gmail',        description: 'Import income & expenses from financial emails (receipts, invoices, payments)', logo: '📧', syncRoute: '/api/sync/gmail',   oauthRedirect: true },
+  { id: 'outlook',  name: 'Outlook',      description: 'Import income & expenses from financial emails (receipts, invoices, payments)', logo: '📨', syncRoute: '/api/sync/outlook', oauthRedirect: true },
   { id: 'mercury',  name: 'Mercury',      description: 'Connect Mercury business banking',                        logo: '☿',  comingSoon: true },
   { id: 'xero',     name: 'Xero',         description: 'Import accounting data from Xero',                       logo: '📊', comingSoon: true },
   { id: 'brex',     name: 'Brex',         description: 'Sync Brex card transactions and expenses',               logo: '💼', comingSoon: true },
@@ -193,7 +195,7 @@ async function loadPlaidLink(token: string, onSuccess: (publicToken: string) => 
 
 type ModalType = 'stripe' | 'shopify' | 'paypal' | 'plaid' | null
 
-const QB_ERRORS: Record<string, string> = {
+const OAUTH_ERRORS: Record<string, string> = {
   qb_not_configured: 'QuickBooks is not configured on this platform. Add QB_CLIENT_ID and QB_CLIENT_SECRET to your environment.',
   qb_denied: 'QuickBooks authorization was cancelled.',
   qb_invalid_callback: 'Invalid QuickBooks callback. Please try again.',
@@ -201,6 +203,20 @@ const QB_ERRORS: Record<string, string> = {
   qb_no_org: 'Organization not found. Please try again.',
   qb_token_exchange: 'Failed to exchange QuickBooks authorization code. Please try again.',
   qb_save_failed: 'Failed to save QuickBooks connection. Please try again.',
+  gmail_not_configured: 'Gmail is not configured on this platform. Add GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET to your environment.',
+  gmail_denied: 'Gmail authorization was cancelled.',
+  gmail_invalid_callback: 'Invalid Gmail callback. Please try again.',
+  gmail_state_mismatch: 'Authorization request expired. Please try again.',
+  gmail_no_org: 'Organization not found. Please try again.',
+  gmail_token_exchange: 'Failed to exchange Gmail authorization code. Please try again.',
+  gmail_save_failed: 'Failed to save Gmail connection. Please try again.',
+  outlook_not_configured: 'Outlook is not configured on this platform. Add OUTLOOK_CLIENT_ID and OUTLOOK_CLIENT_SECRET to your environment.',
+  outlook_denied: 'Outlook authorization was cancelled.',
+  outlook_invalid_callback: 'Invalid Outlook callback. Please try again.',
+  outlook_state_mismatch: 'Authorization request expired. Please try again.',
+  outlook_no_org: 'Organization not found. Please try again.',
+  outlook_token_exchange: 'Failed to exchange Outlook authorization code. Please try again.',
+  outlook_save_failed: 'Failed to save Outlook connection. Please try again.',
 }
 
 export default function ConnectionsPage() {
@@ -244,11 +260,16 @@ export default function ConnectionsPage() {
     const params = new URLSearchParams(window.location.search)
     const connected = params.get('connected')
     const error = params.get('error')
-    if (connected === 'quickbooks') {
-      setPageSuccess('QuickBooks connected successfully and initial sync is complete.')
+    const CONNECTED_LABELS: Record<string, string> = {
+      quickbooks: 'QuickBooks',
+      gmail: 'Gmail',
+      outlook: 'Outlook',
+    }
+    if (connected && CONNECTED_LABELS[connected]) {
+      setPageSuccess(`${CONNECTED_LABELS[connected]} connected successfully and initial sync is complete.`)
       window.history.replaceState({}, '', '/connections')
-    } else if (error && QB_ERRORS[error]) {
-      setPageError(QB_ERRORS[error])
+    } else if (error && OAUTH_ERRORS[error]) {
+      setPageError(OAUTH_ERRORS[error])
       window.history.replaceState({}, '', '/connections')
     }
   }, [])
@@ -272,12 +293,12 @@ export default function ConnectionsPage() {
   async function handleConnect(providerId: string) {
     setPageError('')
     setPageSuccess('')
-    if (providerId === 'stripe') setModal('stripe')
-    else if (providerId === 'shopify') setModal('shopify')
-    else if (providerId === 'paypal') setModal('paypal')
-    else if (providerId === 'quickbooks') {
-      // Redirect browser to OAuth authorization — no modal needed
-      window.location.href = '/api/connections/quickbooks'
+    if (providerId === 'stripe') {
+      setModal('stripe')
+    } else if (providerId === 'shopify') {
+      setModal('shopify')
+    } else if (providerId === 'paypal') {
+      setModal('paypal')
     } else if (providerId === 'plaid') {
       // If credentials are already saved, go straight to Link
       const existing = getConnection('plaid')
@@ -285,6 +306,12 @@ export default function ConnectionsPage() {
         await openPlaidLink()
       } else {
         setModal('plaid')
+      }
+    } else {
+      // Generic OAuth redirect: quickbooks, gmail, outlook, and any future oauthRedirect provider
+      const provider = PROVIDERS.find((p) => p.id === providerId)
+      if (provider?.oauthRedirect) {
+        window.location.href = `/api/connections/${providerId}`
       }
     }
   }
@@ -338,6 +365,8 @@ export default function ConnectionsPage() {
       shopify: '/api/connections/shopify',
       paypal: '/api/connections/paypal',
       quickbooks: '/api/connections/quickbooks',
+      gmail: '/api/connections/gmail',
+      outlook: '/api/connections/outlook',
     }
     try {
       const url = routeMap[disconnectTarget.provider]

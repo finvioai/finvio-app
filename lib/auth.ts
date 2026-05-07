@@ -3,11 +3,11 @@ import { unstable_cache } from 'next/cache'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 // Shared within one server render (layout + page share the same resolved value).
-// Uses getSession() — reads JWT from cookie locally, no network call to auth server.
+// Uses getUser() — validates JWT with auth server, eliminates the getSession warning.
 export const getSession = cache(async () => {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  return session
+  const { data: { user } } = await supabase.auth.getUser()
+  return user ? { user } : null
 })
 
 // Cached for 5 minutes across requests, keyed by userId.

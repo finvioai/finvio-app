@@ -230,6 +230,9 @@ export default function AdvisorPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // Guards the init effect from React Strict Mode's intentional double-invocation.
+  // Refs survive the simulated unmount so the second run is a no-op.
+  const initRef = useRef(false)
 
   // ─── load session list ──────────────────────────────────────────────────
   const refreshSessions = useCallback(async () => {
@@ -244,24 +247,23 @@ export default function AdvisorPage() {
     }
   }, [])
 
-  // ─── restore last session from localStorage ────────────────────────────
+  // ─── restore last session or handle incoming voice query ──────────────
+  // initRef prevents React Strict Mode's double-invocation from calling both
+  // sendMessage (scheduled by the first run) AND loadSession (called by the
+  // second run after the voice query was already removed from sessionStorage).
   useEffect(() => {
-    refreshSessions()
-    const saved = localStorage.getItem(SESSION_STORAGE_KEY)
-    if (saved) {
-      loadSession(saved)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (initRef.current) return
+    initRef.current = true
 
-  // ─── auto-send voice query dropped by FloatingAdvisorButton ───────────
-  useEffect(() => {
-    const q = sessionStorage.getItem(VOICE_QUERY_KEY)
-    if (q) {
+    refreshSessions()
+    const voiceQuery = sessionStorage.getItem(VOICE_QUERY_KEY)
+    if (voiceQuery) {
       sessionStorage.removeItem(VOICE_QUERY_KEY)
-      // Small delay so the page finishes mounting before the message is sent
-      setTimeout(() => sendMessage(q), 300)
+      setTimeout(() => sendMessage(voiceQuery), 300)
+      return
     }
+    const saved = localStorage.getItem(SESSION_STORAGE_KEY)
+    if (saved) loadSession(saved)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
