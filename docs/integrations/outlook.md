@@ -1,6 +1,6 @@
 # Outlook Integration
 
-Connects your Microsoft Outlook / Office 365 mailbox (read-only) so that financial emails — payment receipts, invoices, billing statements, subscription renewals — are automatically detected and added to your transaction ledger.
+Connects your Microsoft Outlook / Office 365 mailbox (read-only) so that financial emails — payment receipts, invoices, billing statements, subscription renewals — are automatically detected and added to your transaction ledger..
 
 ---
 
