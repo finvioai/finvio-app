@@ -5,8 +5,9 @@ import { categorize } from '@/lib/categorization/rules'
 // ─── Shopify OAuth helpers ────────────────────────────────────────────────────
 
 export function getShopifyAuthUrl(shop: string, state: string): string {
-  const scopes = 'read_orders'
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/connections/shopify/callback`
+  const scopes = 'read_customers,read_orders,read_products'
+  const redirectUri = process.env.SHOPIFY_REDIRECT_URI
+    ?? `${process.env.NEXT_PUBLIC_APP_URL}/api/connections/shopify/callback`
   return (
     `https://${shop}/admin/oauth/authorize` +
     `?client_id=${process.env.SHOPIFY_API_KEY}` +
