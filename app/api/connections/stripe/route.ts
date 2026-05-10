@@ -46,16 +46,35 @@ export async function DELETE(request: NextRequest) {
     .single()
   if (!member) return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
 
+  const now = new Date().toISOString()
+
   await supabase
     .from('connections')
     .update({ status: 'disconnected', encrypted_access_token: null, encrypted_refresh_token: null })
     .eq('org_id', member.org_id)
     .eq('provider', 'stripe')
 
+  // Cancel active subscriptions so MRR/ARR immediately drop to zero.
+  // On reconnect, the sync upserts them back to their real status.
+  await supabase
+    .from('subscriptions')
+    .update({ status: 'cancelled', cancelled_at: now })
+    .eq('org_id', member.org_id)
+    .eq('source', 'stripe')
+    .neq('status', 'cancelled')
+
+  // Deactivate customers so the active customer count drops to zero.
+  await supabase
+    .from('customers')
+    .update({ status: 'inactive' })
+    .eq('org_id', member.org_id)
+    .eq('source', 'stripe')
+    .eq('status', 'active')
+
   if (request.nextUrl.searchParams.get('removeData') === 'true') {
     await supabase
       .from('transactions')
-      .update({ deleted_at: new Date().toISOString() })
+      .update({ deleted_at: now })
       .eq('org_id', member.org_id)
       .eq('source', 'stripe')
       .is('deleted_at', null)
