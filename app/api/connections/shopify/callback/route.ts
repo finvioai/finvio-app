@@ -5,6 +5,7 @@ import { exchangeShopifyCode } from '@/lib/sync/shopify'
 import { encrypt } from '@/lib/encryption'
 
 export async function GET(request: NextRequest) {
+  const origin = new URL(request.url).origin
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const shop = searchParams.get('shop')
@@ -12,24 +13,24 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error')
 
   if (error) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/connections?error=shopify_denied`)
+    return NextResponse.redirect(`${origin}/connections?error=shopify_denied`)
   }
 
   if (!code || !shop || !state) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/connections?error=shopify_invalid`)
+    return NextResponse.redirect(`${origin}/connections?error=shopify_invalid`)
   }
 
   // Verify CSRF state
   const cookieStore = await cookies()
   const savedState = cookieStore.get('shopify_oauth_state')?.value
   if (savedState !== state) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/connections?error=shopify_csrf`)
+    return NextResponse.redirect(`${origin}/connections?error=shopify_csrf`)
   }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/login`)
+    return NextResponse.redirect(`${origin}/login`)
   }
 
   const { data: member } = await supabase
@@ -38,47 +39,40 @@ export async function GET(request: NextRequest) {
     .eq('user_id', user.id)
     .single()
   if (!member) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/connections?error=no_org`)
+    return NextResponse.redirect(`${origin}/connections?error=shopify_no_org`)
   }
 
   try {
     const accessToken = await exchangeShopifyCode(shop, code)
-    const encryptedToken = encrypt(accessToken)
 
-    const existing = await supabase
+    // Fetch store name for the account label
+    let shopName = shop
+    try {
+      const infoRes = await fetch(`https://${shop}/admin/api/2024-01/shop.json`, {
+        headers: { 'X-Shopify-Access-Token': accessToken },
+      })
+      if (infoRes.ok) {
+        const json = await infoRes.json() as { shop?: { name?: string } }
+        shopName = json.shop?.name ?? shop
+      }
+    } catch { /* keep shop domain as fallback */ }
+
+    await supabase
       .from('connections')
-      .select('id')
-      .eq('org_id', member.org_id)
-      .eq('provider', 'shopify')
-      .maybeSingle()
-
-    if (existing.data) {
-      await supabase.from('connections').update({
-        encrypted_access_token: encryptedToken,
-        account_name: shop,
-        status: 'active',
-        metadata: { shop },
-      }).eq('id', existing.data.id)
-    } else {
-      await supabase.from('connections').insert({
+      .upsert({
         org_id: member.org_id,
         provider: 'shopify',
-        encrypted_access_token: encryptedToken,
-        account_name: shop,
         status: 'active',
+        encrypted_access_token: encrypt(accessToken),
+        account_name: shopName,
         metadata: { shop },
-      })
-    }
+      }, { onConflict: 'org_id,provider' })
 
-    const response = NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/connections?success=shopify`
-    )
+    const response = NextResponse.redirect(`${origin}/connections?connected=shopify`)
     response.cookies.delete('shopify_oauth_state')
     return response
   } catch (err) {
     console.error('Shopify OAuth callback error:', err)
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/connections?error=shopify_failed`
-    )
+    return NextResponse.redirect(`${origin}/connections?error=shopify_failed`)
   }
 }
