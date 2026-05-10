@@ -28,6 +28,8 @@ Each payment creates an income transaction:
 - `source_ref_id: 'paypal_{transaction_id}'` for idempotency
 - Only transactions with `transaction_status === 'S'` (success) are imported
 
+If you disconnect with **Remove imported data** and reconnect, PayPal records are correctly re-imported — soft-deleted records are restored rather than skipped as false duplicates.
+
 ## Token refresh
 
 On each sync, the server:

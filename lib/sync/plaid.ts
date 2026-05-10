@@ -169,7 +169,7 @@ export async function syncPlaidTransactions(
         const refId = `plaid_${txn.transaction_id}`
         const { data: existing } = await supabase
           .from('transactions')
-          .select('id')
+          .select('id, deleted_at')
           .eq('org_id', orgId)
           .eq('source_ref_id', refId)
           .maybeSingle()
@@ -181,8 +181,8 @@ export async function syncPlaidTransactions(
         const description = txn.name ?? txn.merchant_name ?? 'Bank transaction'
         const date = txn.date
 
-        if (existing) {
-          // Update if modified
+        if (existing && !existing.deleted_at) {
+          // Active record — update modified fields
           await supabase.from('transactions').update({
             amount: absAmount,
             description,
@@ -194,7 +194,7 @@ export async function syncPlaidTransactions(
 
         const { category, confidence, method, revenue_type } = await categorize(description, type, orgId)
 
-        await supabase.from('transactions').insert({
+        const payload = {
           org_id: orgId,
           type,
           amount: absAmount,
@@ -208,10 +208,15 @@ export async function syncPlaidTransactions(
           source_ref_id: refId,
           currency: 'usd',
           is_reviewed: false,
+          deleted_at: null,
           vendor: txn.merchant_name ?? null,
           raw_metadata: txn as unknown as Record<string, unknown>,
-        })
-        synced++
+        }
+
+        const { error } = existing?.deleted_at
+          ? await supabase.from('transactions').update(payload).eq('id', existing.id)
+          : await supabase.from('transactions').insert(payload)
+        if (!error) synced++
       }
     }
 
