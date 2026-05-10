@@ -47,7 +47,7 @@ If the refresh token is lost or expires (tokens expire after 90 days of inactivi
 
 | Trigger | Behavior |
 |---------|----------|
-| On connect | Full 90-day sync using date filter |
+| On connect / reconnect | Full 90-day sync using date filter |
 | Manual "Sync Now" | Delta sync (only new emails since last sync) |
 | Daily cron (02:00 UTC) | Same as manual sync |
 
@@ -105,4 +105,4 @@ On the Connections page, click **Disconnect** next to Outlook. You will be asked
 - **Keep imported data** — preserves all Outlook-sourced transactions in your ledger
 - **Remove imported data** — soft-deletes all transactions with `source = 'outlook'`
 
-Tokens are cleared from the database. The delta cursor (`sync_cursor`) is also cleared, so a future reconnect starts fresh. To fully revoke app access at Microsoft's side, visit [myapps.microsoft.com](https://myapps.microsoft.com).
+Tokens, the delta cursor (`sync_cursor`), and `last_synced_at` are all cleared from the database. Reconnecting always starts with a fresh 90-day lookback, so previously removed data is correctly re-imported. To fully revoke app access at Microsoft's side, visit [myapps.microsoft.com](https://myapps.microsoft.com).

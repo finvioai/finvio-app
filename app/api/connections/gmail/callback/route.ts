@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
         encrypted_refresh_token: encrypt(tokens.refreshToken),
         account_name: tokens.email,
         metadata: { email_address: tokens.email },
+        last_synced_at: null, // reset so sync uses full 90-day lookback
       },
       { onConflict: 'org_id,provider' }
     )

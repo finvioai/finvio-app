@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
         account_name: tokens.email,
         metadata: { email_address: tokens.email },
         sync_cursor: null,
+        last_synced_at: null, // reset so sync uses full lookback on reconnect
       },
       { onConflict: 'org_id,provider' }
     )

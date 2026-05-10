@@ -50,6 +50,7 @@ export async function DELETE(request: NextRequest) {
       encrypted_access_token: null,
       encrypted_refresh_token: null,
       sync_cursor: null,
+      last_synced_at: null,
     })
     .eq('org_id', member.org_id)
     .eq('provider', 'outlook')

@@ -49,6 +49,7 @@ export async function DELETE(request: NextRequest) {
       status: 'disconnected',
       encrypted_access_token: null,
       encrypted_refresh_token: null,
+      last_synced_at: null,
     })
     .eq('org_id', member.org_id)
     .eq('provider', 'gmail')
