@@ -9,6 +9,55 @@ export function getStripeClient(secretKey?: string) {
   return new Stripe(key)
 }
 
+// ─── Stripe Connect OAuth helpers ─────────────────────────────────────────────
+
+export function getStripeOAuthUrl(state: string, redirectUri: string): string {
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: process.env.STRIPE_CLIENT_ID!,
+    scope: 'read_write',
+    redirect_uri: redirectUri,
+    state,
+  })
+  return `https://connect.stripe.com/oauth/authorize?${params}`
+}
+
+export async function exchangeStripeCode(code: string): Promise<{
+  accessToken: string
+  refreshToken: string
+  stripeUserId: string
+  email: string
+}> {
+  const res = await fetch('https://connect.stripe.com/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_secret: process.env.STRIPE_SECRET_KEY!,
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error_description ?? data.error ?? 'Token exchange failed')
+
+  // Fetch account name for display using the connected account's token
+  let email: string = data.stripe_user_id
+  try {
+    const stripe = getStripeClient(data.access_token)
+    const account = await stripe.accounts.retrieve(null as unknown as string)
+    email = account.email ?? (account.business_profile as { name?: string })?.name ?? data.stripe_user_id
+  } catch {
+    // Non-fatal: fall back to stripe_user_id as the display name
+  }
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token ?? '',
+    stripeUserId: data.stripe_user_id,
+    email,
+  }
+}
+
 export async function getStripeClientForOrg(orgId: string, supabase: SupabaseClient): Promise<Stripe> {
   const { data: connection } = await supabase
     .from('connections')

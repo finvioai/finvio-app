@@ -19,7 +19,7 @@ interface ProviderConfig {
 }
 
 const PROVIDERS: ProviderConfig[] = [
-  { id: 'stripe',   name: 'Stripe',      description: 'Sync charges, invoices, subscriptions and customer data', logo: '💳', syncRoute: '/api/sync/stripe' },
+  { id: 'stripe',   name: 'Stripe',      description: 'Sync charges, invoices, subscriptions and customer data', logo: '💳', syncRoute: '/api/sync/stripe', oauthRedirect: true },
   { id: 'plaid',    name: 'Plaid (Bank)', description: 'Connect your bank account for real-time transaction sync', logo: '🏦', comingSoon: true },
   { id: 'shopify',  name: 'Shopify',      description: 'Import paid orders and revenue from your Shopify store',  logo: '🛍', syncRoute: '/api/sync/shopify' },
   { id: 'paypal',   name: 'PayPal',       description: 'Sync PayPal transactions and settlements',                logo: '💰', syncRoute: '/api/sync/paypal' },
@@ -193,9 +193,16 @@ async function loadPlaidLink(token: string, onSuccess: (publicToken: string) => 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type ModalType = 'stripe' | 'shopify' | 'paypal' | 'plaid' | null
+type ModalType = 'shopify' | 'paypal' | 'plaid' | null
 
 const OAUTH_ERRORS: Record<string, string> = {
+  stripe_not_configured: 'Stripe Connect is not configured. Add STRIPE_CLIENT_ID to your environment.',
+  stripe_denied: 'Stripe authorization was cancelled.',
+  stripe_invalid_callback: 'Invalid Stripe callback. Please try again.',
+  stripe_state_mismatch: 'Authorization request expired. Please try again.',
+  stripe_no_org: 'Organization not found. Please try again.',
+  stripe_token_exchange: 'Failed to exchange Stripe authorization code. Please try again.',
+  stripe_save_failed: 'Failed to save Stripe connection. Please try again.',
   shopify_not_configured: 'Shopify is not configured on this platform. Add SHOPIFY_API_KEY and SHOPIFY_API_SECRET to your environment.',
   shopify_denied: 'Shopify authorization was cancelled.',
   shopify_no_shop: 'No store domain provided. Please enter your store domain and try again.',
@@ -238,8 +245,6 @@ export default function ConnectionsPage() {
   const [removeData, setRemoveData] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
 
-  // Stripe
-  const [stripeKey, setStripeKey] = useState('')
   // Shopify
   const [shopDomain, setShopDomain] = useState('')
   // PayPal
@@ -267,6 +272,7 @@ export default function ConnectionsPage() {
     const connected = params.get('connected')
     const error = params.get('error')
     const CONNECTED_LABELS: Record<string, string> = {
+      stripe: 'Stripe',
       quickbooks: 'QuickBooks',
       gmail: 'Gmail',
       outlook: 'Outlook',
@@ -288,7 +294,6 @@ export default function ConnectionsPage() {
   function closeModal() {
     setModal(null)
     setModalError('')
-    setStripeKey('')
     setShopDomain('')
     setPaypalClientId('')
     setPaypalSecret('')
@@ -299,9 +304,7 @@ export default function ConnectionsPage() {
   async function handleConnect(providerId: string) {
     setPageError('')
     setPageSuccess('')
-    if (providerId === 'stripe') {
-      setModal('stripe')
-    } else if (providerId === 'shopify') {
+    if (providerId === 'shopify') {
       setModal('shopify')
     } else if (providerId === 'paypal') {
       setModal('paypal')
@@ -401,10 +404,6 @@ export default function ConnectionsPage() {
     }
   }
 
-  async function submitStripe() {
-    await submitGeneric('/api/connections/stripe', { secret_key: stripeKey.trim() }, () => {})
-  }
-
   function submitShopify() {
     const shop = shopDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
     if (!shop) { setModalError('Enter your store domain'); return }
@@ -478,27 +477,6 @@ export default function ConnectionsPage() {
             ))}
           </div>
         </>
-      )}
-
-      {/* Stripe Modal */}
-      {modal === 'stripe' && (
-        <Modal title="Connect Stripe" onClose={closeModal}>
-          <p className="text-sm text-gray-500">
-            Enter your Stripe secret key from{' '}
-            <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Stripe Dashboard → API Keys</a>.
-          </p>
-          <FieldInput label="Secret Key" hint="Starts with sk_live_ or sk_test_">
-            <input type="password" value={stripeKey} onChange={(e) => setStripeKey(e.target.value)}
-              placeholder="sk_test_…" className={cn(inputCls, 'font-mono')} autoComplete="off" />
-          </FieldInput>
-          {modalError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="h-4 w-4 shrink-0" />{modalError}</p>}
-          <div className="flex gap-3 pt-1">
-            <Button onClick={submitStripe} disabled={modalLoading || !stripeKey.trim()} className="flex-1">
-              {modalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect & Sync'}
-            </Button>
-            <Button variant="outline" onClick={closeModal} disabled={modalLoading}>Cancel</Button>
-          </div>
-        </Modal>
       )}
 
       {/* Shopify Modal */}

@@ -1,78 +1,39 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { encrypt } from '@/lib/encryption'
-import { runStripePullSync } from '@/lib/sync/stripe'
-import Stripe from 'stripe'
+import { getStripeOAuthUrl } from '@/lib/sync/stripe'
+import crypto from 'crypto'
 
-export async function POST(request: NextRequest) {
+// GET — redirect browser to Stripe Connect OAuth authorization page
+export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.redirect(new URL('/login', request.url))
 
-  const { data: member } = await supabase
-    .from('org_members')
-    .select('org_id')
-    .eq('user_id', user.id)
-    .single()
-  if (!member) return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
+  const origin = new URL(request.url).origin
 
-  const body = await request.json()
-  const secretKey: string = body.secret_key ?? ''
-
-  if (!secretKey || !secretKey.startsWith('sk_')) {
-    return NextResponse.json({ error: 'Enter a valid Stripe secret key (starts with sk_live_ or sk_test_)' }, { status: 400 })
+  if (!process.env.STRIPE_CLIENT_ID) {
+    return NextResponse.redirect(new URL('/connections?error=stripe_not_configured', origin))
   }
 
-  // Validate key against Stripe API
-  let accountName: string | null = null
-  try {
-    const stripe = new Stripe(secretKey)
-    // retrieve(null) fetches the account tied to this key (no args needed for own account)
-    const account = await stripe.accounts.retrieve(null)
-    accountName = account.email ?? account.business_profile?.name ?? account.id ?? 'Stripe Account'
-  } catch {
-    // Key may be invalid, or this is a restricted key that can't read account info
-    // Do a balance check to validate the key is at least functional
-    try {
-      const stripe = new Stripe(secretKey)
-      await stripe.balance.retrieve()
-      accountName = secretKey.startsWith('sk_live_') ? 'Stripe Live Account' : 'Stripe Test Account'
-    } catch {
-      return NextResponse.json({ error: 'Invalid Stripe secret key. Please check and try again.' }, { status: 400 })
-    }
-  }
+  const redirectUri =
+    process.env.STRIPE_REDIRECT_URI ??
+    `${process.env.NEXT_PUBLIC_APP_URL}/api/connections/stripe/callback`
 
-  const encryptedToken = encrypt(secretKey)
+  const state = crypto.randomBytes(16).toString('hex')
+  const authUrl = getStripeOAuthUrl(state, redirectUri)
 
-  const { data: conn, error } = await supabase
-    .from('connections')
-    .upsert({
-      org_id: member.org_id,
-      provider: 'stripe',
-      status: 'active',
-      encrypted_access_token: encryptedToken,
-      account_name: accountName,
-    }, { onConflict: 'org_id,provider' })
-    .select('id')
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Auto-sync immediately after connecting
-  let syncResult: { synced: number; skipped: number; error?: string } = { synced: 0, skipped: 0 }
-  if (conn?.id) {
-    syncResult = await runStripePullSync(member.org_id, conn.id, supabase)
-  }
-
-  return NextResponse.json({
-    connected: true,
-    account_name: accountName,
-    synced: syncResult.synced,
-    skipped: syncResult.skipped,
-    sync_error: syncResult.error ?? null,
+  const response = NextResponse.redirect(authUrl)
+  response.cookies.set('stripe_oauth_state', state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 600,
+    path: '/',
+    sameSite: 'lax',
   })
+  return response
 }
 
+// DELETE — disconnect Stripe
 export async function DELETE(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -87,7 +48,7 @@ export async function DELETE(request: NextRequest) {
 
   await supabase
     .from('connections')
-    .update({ status: 'disconnected', encrypted_access_token: null })
+    .update({ status: 'disconnected', encrypted_access_token: null, encrypted_refresh_token: null })
     .eq('org_id', member.org_id)
     .eq('provider', 'stripe')
 
