@@ -196,6 +196,13 @@ async function loadPlaidLink(token: string, onSuccess: (publicToken: string) => 
 type ModalType = 'stripe' | 'shopify' | 'paypal' | 'plaid' | null
 
 const OAUTH_ERRORS: Record<string, string> = {
+  shopify_not_configured: 'Shopify is not configured on this platform. Add SHOPIFY_API_KEY and SHOPIFY_API_SECRET to your environment.',
+  shopify_denied: 'Shopify authorization was cancelled.',
+  shopify_no_shop: 'No store domain provided. Please enter your store domain and try again.',
+  shopify_invalid: 'Invalid Shopify callback. Please try again.',
+  shopify_csrf: 'Authorization request expired. Please try again.',
+  shopify_no_org: 'Organization not found. Please try again.',
+  shopify_failed: 'Failed to save Shopify connection. Please try again.',
   qb_not_configured: 'QuickBooks is not configured on this platform. Add QB_CLIENT_ID and QB_CLIENT_SECRET to your environment.',
   qb_denied: 'QuickBooks authorization was cancelled.',
   qb_invalid_callback: 'Invalid QuickBooks callback. Please try again.',
@@ -235,7 +242,6 @@ export default function ConnectionsPage() {
   const [stripeKey, setStripeKey] = useState('')
   // Shopify
   const [shopDomain, setShopDomain] = useState('')
-  const [shopToken, setShopToken] = useState('')
   // PayPal
   const [paypalClientId, setPaypalClientId] = useState('')
   const [paypalSecret, setPaypalSecret] = useState('')
@@ -264,6 +270,7 @@ export default function ConnectionsPage() {
       quickbooks: 'QuickBooks',
       gmail: 'Gmail',
       outlook: 'Outlook',
+      shopify: 'Shopify',
     }
     if (connected && CONNECTED_LABELS[connected]) {
       setPageSuccess(`${CONNECTED_LABELS[connected]} connected successfully and initial sync is complete.`)
@@ -283,7 +290,6 @@ export default function ConnectionsPage() {
     setModalError('')
     setStripeKey('')
     setShopDomain('')
-    setShopToken('')
     setPaypalClientId('')
     setPaypalSecret('')
     setPlaidClientId('')
@@ -399,10 +405,10 @@ export default function ConnectionsPage() {
     await submitGeneric('/api/connections/stripe', { secret_key: stripeKey.trim() }, () => {})
   }
 
-  async function submitShopify() {
+  function submitShopify() {
     const shop = shopDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '')
-    if (!shop || !shopToken.trim()) { setModalError('Both fields are required'); return }
-    await submitGeneric('/api/connections/shopify', { shop, access_token: shopToken.trim() }, () => {})
+    if (!shop) { setModalError('Enter your store domain'); return }
+    window.location.href = `/api/connections/shopify?shop=${encodeURIComponent(shop)}`
   }
 
   async function submitPayPal() {
@@ -498,26 +504,33 @@ export default function ConnectionsPage() {
       {/* Shopify Modal */}
       {modal === 'shopify' && (
         <Modal title="Connect Shopify" onClose={closeModal}>
-          <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800 space-y-1">
-            <p className="font-medium">How to get your access token:</p>
-            <p>1. Shopify Admin → Settings → Apps → Develop apps</p>
-            <p>2. Create app → Configure API scopes (read_orders, read_customers)</p>
-            <p>3. Install app → Copy the Admin API access token</p>
-          </div>
-          <FieldInput label="Store Domain">
-            <input type="text" value={shopDomain} onChange={(e) => setShopDomain(e.target.value)}
-              placeholder="my-store.myshopify.com" className={inputCls} autoComplete="off" />
-          </FieldInput>
-          <FieldInput label="Admin API Access Token">
-            <input type="password" value={shopToken} onChange={(e) => setShopToken(e.target.value)}
-              placeholder="shpat_…" className={cn(inputCls, 'font-mono')} autoComplete="off" />
+          <p className="text-sm text-gray-500">
+            Enter your store name and you&apos;ll be taken to Shopify to authorize access. No API tokens required.
+          </p>
+          <FieldInput label="Store domain" hint="Just the store name — we'll add .myshopify.com">
+            <div className="flex rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+              <input
+                type="text"
+                value={shopDomain}
+                onChange={(e) => setShopDomain(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitShopify()}
+                placeholder="my-store"
+                className="flex-1 px-3 py-2 text-sm outline-none"
+                autoComplete="off"
+                autoFocus
+              />
+              <span className="flex items-center px-3 bg-gray-50 text-xs text-gray-400 border-l border-gray-300 whitespace-nowrap">
+                .myshopify.com
+              </span>
+            </div>
           </FieldInput>
           {modalError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="h-4 w-4 shrink-0" />{modalError}</p>}
           <div className="flex gap-3 pt-1">
-            <Button onClick={submitShopify} disabled={modalLoading || !shopDomain.trim() || !shopToken.trim()} className="flex-1">
-              {modalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect Shopify'}
+            <Button onClick={submitShopify} disabled={!shopDomain.trim()} className="flex-1">
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+              Authorize with Shopify
             </Button>
-            <Button variant="outline" onClick={closeModal} disabled={modalLoading}>Cancel</Button>
+            <Button variant="outline" onClick={closeModal}>Cancel</Button>
           </div>
         </Modal>
       )}

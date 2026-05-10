@@ -5,7 +5,7 @@ import { categorize } from '@/lib/categorization/rules'
 // ─── Shopify OAuth helpers ────────────────────────────────────────────────────
 
 export function getShopifyAuthUrl(shop: string, state: string): string {
-  const scopes = 'read_orders,read_customers,read_products'
+  const scopes = 'read_orders'
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/connections/shopify/callback`
   return (
     `https://${shop}/admin/oauth/authorize` +
@@ -34,18 +34,72 @@ export async function exchangeShopifyCode(
   return json.access_token
 }
 
-// ─── Shopify order sync ───────────────────────────────────────────────────────
+// ─── Shopify GraphQL types ────────────────────────────────────────────────────
 
-interface ShopifyOrder {
-  id: number
-  order_number: number
-  name: string
-  total_price: string
-  currency: string
-  created_at: string
-  financial_status: string
-  customer?: { email?: string; first_name?: string; last_name?: string } | null
+interface GQLOrder {
+  id: string             // "gid://shopify/Order/123456789"
+  legacyResourceId: string  // numeric string "123456789"
+  name: string           // "#1001"
+  totalPriceSet: { shopMoney: { amount: string; currencyCode: string } }
+  createdAt: string      // ISO datetime
 }
+
+interface GQLResponse {
+  data?: {
+    orders?: {
+      edges?: Array<{ node: GQLOrder }>
+      pageInfo?: { hasNextPage: boolean; endCursor: string | null }
+    }
+  }
+  errors?: Array<{ message: string }>
+}
+
+// GraphQL query — no customer fields, avoids Shopify protected data restriction
+const ORDERS_QUERY = `
+  query GetOrders($first: Int!, $after: String, $query: String!) {
+    orders(first: $first, after: $after, query: $query) {
+      edges { node {
+        id legacyResourceId name createdAt
+        totalPriceSet { shopMoney { amount currencyCode } }
+      }}
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+`
+
+async function fetchOrderPage(
+  shop: string,
+  accessToken: string,
+  sinceIso: string,
+  after: string | null
+): Promise<{ orders: GQLOrder[]; hasNextPage: boolean; endCursor: string | null }> {
+  const res = await fetch(`https://${shop}/admin/api/2024-01/graphql.json`, {
+    method: 'POST',
+    headers: { 'X-Shopify-Access-Token': accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: ORDERS_QUERY,
+      variables: { first: 250, after, query: `financial_status:paid created_at:>${sinceIso}` },
+    }),
+  })
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Shopify GraphQL error (${res.status}): ${body || res.statusText}`)
+  }
+
+  const json = await res.json() as GQLResponse
+  if (json.errors?.length) {
+    throw new Error(`Shopify GraphQL: ${json.errors.map((e) => e.message).join(', ')}`)
+  }
+
+  return {
+    orders: json.data?.orders?.edges?.map((e) => e.node) ?? [],
+    hasNextPage: json.data?.orders?.pageInfo?.hasNextPage ?? false,
+    endCursor: json.data?.orders?.pageInfo?.endCursor ?? null,
+  }
+}
+
+// ─── Shopify order sync ───────────────────────────────────────────────────────
 
 export async function syncShopifyOrders(
   orgId: string,
@@ -83,25 +137,17 @@ export async function syncShopifyOrders(
   let skipped = 0
 
   try {
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-    let url: string | null =
-      `https://${shop}/admin/api/2024-01/orders.json?status=any&financial_status=paid&created_at_min=${since}&limit=250`
+    const sinceIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    let cursor: string | null = null
+    let hasMore = true
 
-    while (url) {
-      const currentUrl: string = url
-      const response: Response = await fetch(currentUrl, {
-        headers: {
-          'X-Shopify-Access-Token': accessToken,
-          'Content-Type': 'application/json',
-        },
-      })
-      if (!response.ok) throw new Error(`Shopify API error: ${response.statusText}`)
+    while (hasMore) {
+      const page = await fetchOrderPage(shop, accessToken, sinceIso, cursor)
+      hasMore = page.hasNextPage
+      cursor = page.endCursor
 
-      const json = await response.json() as { orders: ShopifyOrder[] }
-      const orders: ShopifyOrder[] = json.orders ?? []
-
-      for (const order of orders) {
-        const refId = `shopify_${order.id}`
+      for (const order of page.orders) {
+        const refId = `shopify_${order.legacyResourceId}`
         const { data: existing } = await supabase
           .from('transactions')
           .select('id')
@@ -111,9 +157,10 @@ export async function syncShopifyOrders(
 
         if (existing) { skipped++; continue }
 
-        const amount = parseFloat(order.total_price)
+        const amount = parseFloat(order.totalPriceSet.shopMoney.amount)
+        const currency = order.totalPriceSet.shopMoney.currencyCode.toLowerCase()
         const description = `Shopify Order ${order.name}`
-        const date = order.created_at.split('T')[0]
+        const date = order.createdAt.split('T')[0]
         const { category, confidence, method, revenue_type } = await categorize(description, 'income', orgId)
 
         await supabase.from('transactions').insert({
@@ -128,17 +175,12 @@ export async function syncShopifyOrders(
           revenue_type: revenue_type ?? 'one_time',
           source: 'shopify',
           source_ref_id: refId,
-          currency: order.currency.toLowerCase(),
+          currency,
           is_reviewed: false,
-          raw_metadata: order as unknown as Record<string, unknown>,
+          raw_metadata: { shopify_id: order.id, name: order.name },
         })
         synced++
       }
-
-      // Shopify uses Link header for pagination
-      const linkHeader: string = response.headers.get('Link') ?? ''
-      const nextMatch: RegExpMatchArray | null = linkHeader.match(/<([^>]+)>;\s*rel="next"/)
-      url = nextMatch ? nextMatch[1] : null
     }
 
     await supabase.from('connections').update({
