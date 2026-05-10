@@ -214,20 +214,22 @@ export async function syncOutlookTransactions(
 
           const sourceRefId = `outlook_${msg.id}`
 
-          // Dedup: same email already processed
+          // Dedup: check including soft-deleted so we can restore rather than re-insert
           const { data: existing } = await supabase
             .from('transactions')
-            .select('id')
+            .select('id, deleted_at')
             .eq('org_id', orgId)
             .eq('source_ref_id', sourceRefId)
             .maybeSingle()
-          if (existing) { skipped++; continue }
+          if (existing && !existing.deleted_at) { skipped++; continue }
 
-          // Dedup: already tracked via another integration
-          const isDuplicate = await checkCrossSourceDuplicate(
-            orgId, parsed.amount, parsed.type, emailDate, supabase
-          )
-          if (isDuplicate) { skipped++; continue }
+          // Cross-source dedup (only for truly new records, not restores)
+          if (!existing) {
+            const isDuplicate = await checkCrossSourceDuplicate(
+              orgId, parsed.amount, parsed.type, emailDate, supabase
+            )
+            if (isDuplicate) { skipped++; continue }
+          }
 
           // Invoice link hint (income only)
           const senderEmail = msg.from?.emailAddress?.address ?? ''
@@ -236,13 +238,13 @@ export async function syncOutlookTransactions(
             invoiceId = await findMatchingInvoice(orgId, parsed.amount, senderEmail, bodyText, supabase)
           }
 
-          const cat = await categorize(`Email: ${subject}`, parsed.type, orgId)
+          const cat = await categorize(subject, parsed.type, orgId)
 
-          await supabase.from('transactions').insert({
+          const payload = {
             org_id: orgId,
             type: parsed.type,
             amount: parsed.amount,
-            description: `Email: ${subject}`,
+            description: subject,
             date: emailDate,
             source: 'outlook',
             source_ref_id: sourceRefId,
@@ -253,6 +255,7 @@ export async function syncOutlookTransactions(
             category_method: cat.method,
             revenue_type: cat.revenue_type ?? null,
             is_reviewed: false,
+            deleted_at: null,
             raw_metadata: {
               from,
               subject,
@@ -260,9 +263,13 @@ export async function syncOutlookTransactions(
               extractor_id: parsed.extractorId,
               invoice_link_hint: invoiceId ? true : undefined,
             },
-          })
+          }
 
-          synced++
+          const { error } = existing?.deleted_at
+            ? await supabase.from('transactions').update(payload).eq('id', existing.id)
+            : await supabase.from('transactions').insert(payload)
+
+          if (!error) synced++
         } catch {
           skipped++
         }

@@ -149,14 +149,16 @@ export async function syncShopifyOrders(
 
       for (const order of page.orders) {
         const refId = `shopify_${order.legacyResourceId}`
+
+        // Include soft-deleted records so we can restore them instead of re-inserting
         const { data: existing } = await supabase
           .from('transactions')
-          .select('id')
+          .select('id, deleted_at')
           .eq('org_id', orgId)
           .eq('source_ref_id', refId)
           .maybeSingle()
 
-        if (existing) { skipped++; continue }
+        if (existing && !existing.deleted_at) { skipped++; continue }
 
         const amount = parseFloat(order.totalPriceSet.shopMoney.amount)
         const currency = order.totalPriceSet.shopMoney.currencyCode.toLowerCase()
@@ -164,9 +166,9 @@ export async function syncShopifyOrders(
         const date = order.createdAt.split('T')[0]
         const { category, confidence, method, revenue_type } = await categorize(description, 'income', orgId)
 
-        await supabase.from('transactions').insert({
+        const payload = {
           org_id: orgId,
-          type: 'income',
+          type: 'income' as const,
           amount,
           description,
           date,
@@ -178,9 +180,18 @@ export async function syncShopifyOrders(
           source_ref_id: refId,
           currency,
           is_reviewed: false,
+          deleted_at: null,
           raw_metadata: { shopify_id: order.id, name: order.name },
-        })
-        synced++
+        }
+
+        if (existing?.deleted_at) {
+          // Restore the soft-deleted record
+          const { error } = await supabase.from('transactions').update(payload).eq('id', existing.id)
+          if (!error) synced++
+        } else {
+          const { error } = await supabase.from('transactions').insert(payload)
+          if (!error) synced++
+        }
       }
     }
 

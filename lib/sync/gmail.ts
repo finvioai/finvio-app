@@ -218,20 +218,22 @@ export async function syncGmailTransactions(
 
           const sourceRefId = `gmail_${ref.id}`
 
-          // Dedup: same email already processed
+          // Dedup: check including soft-deleted so we can restore rather than re-insert
           const { data: existing } = await supabase
             .from('transactions')
-            .select('id')
+            .select('id, deleted_at')
             .eq('org_id', orgId)
             .eq('source_ref_id', sourceRefId)
             .maybeSingle()
-          if (existing) { skipped++; continue }
+          if (existing && !existing.deleted_at) { skipped++; continue }
 
-          // Dedup: already tracked via another integration
-          const isDuplicate = await checkCrossSourceDuplicate(
-            orgId, parsed.amount, parsed.type, emailDate, supabase
-          )
-          if (isDuplicate) { skipped++; continue }
+          // Cross-source dedup (only for truly new records, not restores)
+          if (!existing) {
+            const isDuplicate = await checkCrossSourceDuplicate(
+              orgId, parsed.amount, parsed.type, emailDate, supabase
+            )
+            if (isDuplicate) { skipped++; continue }
+          }
 
           // Invoice link hint (income only)
           const senderEmail = (from.match(/<([^>]+)>/) ?? [])[1] ?? from
@@ -242,7 +244,7 @@ export async function syncGmailTransactions(
 
           const cat = await categorize(subject, parsed.type, orgId)
 
-          await supabase.from('transactions').insert({
+          const payload = {
             org_id: orgId,
             type: parsed.type,
             amount: parsed.amount,
@@ -256,7 +258,8 @@ export async function syncGmailTransactions(
             category_confidence: cat.confidence,
             category_method: cat.method,
             revenue_type: cat.revenue_type ?? null,
-            is_reviewed: false, // always in review queue
+            is_reviewed: false,
+            deleted_at: null,
             raw_metadata: {
               from,
               subject,
@@ -264,9 +267,13 @@ export async function syncGmailTransactions(
               extractor_id: parsed.extractorId,
               invoice_link_hint: invoiceId ? true : undefined,
             },
-          })
+          }
 
-          synced++
+          const { error } = existing?.deleted_at
+            ? await supabase.from('transactions').update(payload).eq('id', existing.id)
+            : await supabase.from('transactions').insert(payload)
+
+          if (!error) synced++
         } catch {
           skipped++
         }
