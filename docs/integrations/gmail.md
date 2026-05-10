@@ -87,7 +87,7 @@ Use the Transactions page to:
 
 | Trigger | Behavior |
 |---------|----------|
-| On connect | Full 90-day lookback sync |
+| On connect / reconnect | Full 90-day lookback sync |
 | Manual "Sync Now" | Emails since last sync (1-day overlap) |
 | Daily cron (02:00 UTC) | Same as manual sync |
 
@@ -249,4 +249,4 @@ On the Connections page, click **Disconnect** next to Gmail. You will be asked w
 - **Keep imported data** — preserves all Gmail-sourced transactions in your ledger
 - **Remove imported data** — soft-deletes all transactions with `source = 'gmail'`
 
-Tokens are revoked from the database in either case. Google access tokens expire naturally; to fully revoke at Google's side, visit [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
+Tokens and `last_synced_at` are cleared from the database in either case. Reconnecting always starts with a fresh 90-day lookback, so previously removed data is correctly re-imported. Google access tokens expire naturally; to fully revoke at Google's side, visit [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
