@@ -13,6 +13,7 @@ Click **Connect Shopify** on the Connections page. Enter your store name (e.g. `
 After authorization, Finvio:
 - Stores your encrypted access token
 - Shows your store name on the Connections card
+- Automatically runs an initial sync covering the last 30 days of paid orders
 
 ### 2. Sync
 
@@ -33,16 +34,17 @@ Transactions land in the review queue (`is_reviewed: false`) and are auto-catego
 
 `source_ref_id = shopify_<order_id>` prevents the same order from being imported twice regardless of how many times you sync.
 
+If you disconnect with **Remove imported data** and then reconnect, orders are correctly re-imported — soft-deleted records are restored rather than skipped as false duplicates.
+
 ---
 
 ## Sync schedule
 
 | Trigger | Behavior |
 |---------|----------|
+| On connect | Last 30 days of paid orders (automatic) |
 | Manual "Sync Now" | Last 30 days of paid orders |
 | Daily cron (02:00 UTC) | Same as manual |
-
-> First sync is not triggered automatically on connect — click **Sync Now** after connecting to import your orders.
 
 ---
 
