@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { exchangeShopifyCode } from '@/lib/sync/shopify'
+import { exchangeShopifyCode, syncShopifyOrders } from '@/lib/sync/shopify'
 import { encrypt } from '@/lib/encryption'
 
 export async function GET(request: NextRequest) {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       }
     } catch { /* keep shop domain as fallback */ }
 
-    await supabase
+    const { data: conn } = await supabase
       .from('connections')
       .upsert({
         org_id: member.org_id,
@@ -67,6 +67,13 @@ export async function GET(request: NextRequest) {
         account_name: shopName,
         metadata: { shop },
       }, { onConflict: 'org_id,provider' })
+      .select('id')
+      .single()
+
+    // Auto-sync immediately after connecting
+    if (conn?.id) {
+      await syncShopifyOrders(member.org_id, conn.id, supabase)
+    }
 
     const response = NextResponse.redirect(`${origin}/connections?connected=shopify`)
     response.cookies.delete('shopify_oauth_state')
