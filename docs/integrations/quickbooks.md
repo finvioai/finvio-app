@@ -37,11 +37,13 @@ Lookback window: last 30 days per sync. Deduplication via `source_ref_id`:
 - Invoices: `qb_invoice_{Id}`
 - Sales receipts: `qb_receipt_{Id}`
 
+If you disconnect with **Remove imported data** and reconnect, QuickBooks records are correctly re-imported — soft-deleted records are restored rather than skipped as false duplicates.
+
 ## On-demand sync
 
 **Route**: `POST /api/sync/quickbooks`
 
-Triggered by "Sync Now" on the Connections page. All operations are idempotent.
+Triggered by "Sync Now" on the Connections page, and automatically on first connect. All operations are idempotent.
 
 ## Token management
 
@@ -56,7 +58,7 @@ Triggered by "Sync Now" on the Connections page. All operations are idempotent.
 
 ## Disconnect
 
-Clicking **Disconnect** on the Connections page calls `DELETE /api/connections/quickbooks`, which clears both tokens and sets status to `disconnected`. The user can reconnect at any time.
+Clicking **Disconnect** on the Connections page calls `DELETE /api/connections/quickbooks`, which clears both tokens and sets status to `disconnected`. The user can choose to **Keep imported data** or **Remove imported data** (soft-deletes all `source = 'quickbooks'` transactions). Reconnecting will correctly re-import any removed data.
 
 ## IQL queries used
 

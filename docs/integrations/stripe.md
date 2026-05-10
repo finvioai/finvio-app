@@ -38,7 +38,9 @@ Stripe uses a **per-user key model** — each organization enters their own Stri
 
 **Route**: `POST /api/sync/stripe`
 
-Triggers a full pull of the last 30 days of charges, customers, and subscriptions. Useful after initial connection. All operations are idempotent via `source_ref_id`.
+Triggers a full pull of the last 30 days of charges, customers, and subscriptions. Runs automatically on first connect; also triggered by "Sync Now". All operations are idempotent via `source_ref_id`.
+
+If you disconnect with **Remove imported data** and reconnect, Stripe records are correctly re-imported — soft-deleted records are restored rather than skipped as false duplicates.
 
 ## MRR calculation
 

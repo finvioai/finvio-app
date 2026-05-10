@@ -108,12 +108,12 @@ export async function syncPayPalTransactions(
         const refId = `paypal_${info.transaction_id}`
         const { data: existing } = await supabase
           .from('transactions')
-          .select('id')
+          .select('id, deleted_at')
           .eq('org_id', orgId)
           .eq('source_ref_id', refId)
           .maybeSingle()
 
-        if (existing) { skipped++; continue }
+        if (existing && !existing.deleted_at) { skipped++; continue }
 
         const rawAmount = parseFloat(info.transaction_amount.value)
         const isIncome = rawAmount > 0
@@ -123,7 +123,7 @@ export async function syncPayPalTransactions(
         const date = info.transaction_initiation_date.split('T')[0]
         const { category, confidence, method, revenue_type } = await categorize(description, type, orgId)
 
-        await supabase.from('transactions').insert({
+        const payload = {
           org_id: orgId,
           type,
           amount,
@@ -137,10 +137,15 @@ export async function syncPayPalTransactions(
           source_ref_id: refId,
           currency: info.transaction_amount.currency_code.toLowerCase(),
           is_reviewed: false,
+          deleted_at: null,
           vendor: item.payer_info?.payer_name?.alternate_full_name ?? null,
           raw_metadata: item as unknown as Record<string, unknown>,
-        })
-        synced++
+        }
+
+        const { error } = existing?.deleted_at
+          ? await supabase.from('transactions').update(payload).eq('id', existing.id)
+          : await supabase.from('transactions').insert(payload)
+        if (!error) synced++
       }
 
       hasMore = page < json.total_pages

@@ -152,20 +152,20 @@ export async function syncQuickBooksData(
       const refId = `qb_purchase_${p.Id}`
       const { data: existing } = await supabase
         .from('transactions')
-        .select('id')
+        .select('id, deleted_at')
         .eq('org_id', orgId)
         .eq('source_ref_id', refId)
         .maybeSingle()
 
-      if (existing) { skipped++; continue }
+      if (existing && !existing.deleted_at) { skipped++; continue }
 
       const description = p.Line?.[0]?.Description ?? p.EntityRef?.name ?? 'QuickBooks expense'
       const vendor = p.EntityRef?.name ?? null
       const { category, confidence, method, revenue_type } = await categorize(description, 'expense', orgId)
 
-      await supabase.from('transactions').insert({
+      const payload = {
         org_id: orgId,
-        type: 'expense',
+        type: 'expense' as const,
         amount: Math.abs(p.TotalAmt),
         description,
         date: p.TxnDate,
@@ -177,10 +177,15 @@ export async function syncQuickBooksData(
         source_ref_id: refId,
         currency: 'usd',
         is_reviewed: false,
+        deleted_at: null,
         vendor,
         raw_metadata: p as unknown as Record<string, unknown>,
-      })
-      synced++
+      }
+
+      const { error } = existing?.deleted_at
+        ? await supabase.from('transactions').update(payload).eq('id', existing.id)
+        : await supabase.from('transactions').insert(payload)
+      if (!error) synced++
     }
 
     // ── Paid Invoices → income ────────────────────────────────────────────────
@@ -200,21 +205,21 @@ export async function syncQuickBooksData(
       const refId = `qb_invoice_${inv.Id}`
       const { data: existing } = await supabase
         .from('transactions')
-        .select('id')
+        .select('id, deleted_at')
         .eq('org_id', orgId)
         .eq('source_ref_id', refId)
         .maybeSingle()
 
-      if (existing) { skipped++; continue }
+      if (existing && !existing.deleted_at) { skipped++; continue }
 
       const description = inv.CustomerRef?.name
         ? `Invoice payment from ${inv.CustomerRef.name}`
         : 'QuickBooks invoice payment'
       const { category, confidence, method, revenue_type } = await categorize(description, 'income', orgId)
 
-      await supabase.from('transactions').insert({
+      const payload = {
         org_id: orgId,
-        type: 'income',
+        type: 'income' as const,
         amount: inv.TotalAmt,
         description,
         date: inv.TxnDate,
@@ -226,10 +231,15 @@ export async function syncQuickBooksData(
         source_ref_id: refId,
         currency: 'usd',
         is_reviewed: false,
+        deleted_at: null,
         vendor: inv.CustomerRef?.name ?? null,
         raw_metadata: inv as unknown as Record<string, unknown>,
-      })
-      synced++
+      }
+
+      const { error } = existing?.deleted_at
+        ? await supabase.from('transactions').update(payload).eq('id', existing.id)
+        : await supabase.from('transactions').insert(payload)
+      if (!error) synced++
     }
 
     // ── Sales Receipts → income ───────────────────────────────────────────────
@@ -250,21 +260,21 @@ export async function syncQuickBooksData(
       const refId = `qb_receipt_${r.Id}`
       const { data: existing } = await supabase
         .from('transactions')
-        .select('id')
+        .select('id, deleted_at')
         .eq('org_id', orgId)
         .eq('source_ref_id', refId)
         .maybeSingle()
 
-      if (existing) { skipped++; continue }
+      if (existing && !existing.deleted_at) { skipped++; continue }
 
       const description = r.CustomerRef?.name
         ? `Sales receipt from ${r.CustomerRef.name}`
         : r.Line?.[0]?.Description ?? 'QuickBooks sales receipt'
       const { category, confidence, method, revenue_type } = await categorize(description, 'income', orgId)
 
-      await supabase.from('transactions').insert({
+      const payload = {
         org_id: orgId,
-        type: 'income',
+        type: 'income' as const,
         amount: r.TotalAmt,
         description,
         date: r.TxnDate,
@@ -276,10 +286,15 @@ export async function syncQuickBooksData(
         source_ref_id: refId,
         currency: 'usd',
         is_reviewed: false,
+        deleted_at: null,
         vendor: r.CustomerRef?.name ?? null,
         raw_metadata: r as unknown as Record<string, unknown>,
-      })
-      synced++
+      }
+
+      const { error } = existing?.deleted_at
+        ? await supabase.from('transactions').update(payload).eq('id', existing.id)
+        : await supabase.from('transactions').insert(payload)
+      if (!error) synced++
     }
 
     await supabase.from('connections').update({

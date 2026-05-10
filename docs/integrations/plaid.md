@@ -24,6 +24,7 @@ Uses Plaid's cursor-based `transactionsSync` API for efficient incremental updat
 - Pending transactions are skipped (Plaid marks them `pending: true`)
 - Plaid amounts: positive = debit (expense), negative = credit (income)
 - Each transaction goes through the 3-layer categorization engine
+- If you disconnect with **Remove imported data** and reconnect, Plaid records are correctly re-imported — soft-deleted records are restored rather than skipped as false duplicates
 
 ## Reconciliation
 

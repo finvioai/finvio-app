@@ -118,21 +118,21 @@ export async function syncStripeCharge(
   const description = charge.description ?? charge.statement_descriptor ?? 'Stripe payment'
   const date = new Date(charge.created * 1000).toISOString().split('T')[0]
 
-  // Idempotency — skip if already imported
+  // Idempotency — skip if already imported (active). Restore if soft-deleted.
   const { data: existing } = await supabase
     .from('transactions')
-    .select('id')
+    .select('id, deleted_at')
     .eq('org_id', orgId)
     .eq('source_ref_id', charge.id)
     .maybeSingle()
 
-  if (existing) return
+  if (existing && !existing.deleted_at) return
 
   const { category, confidence, method, revenue_type } = await categorize(description, 'income', orgId)
 
-  await supabase.from('transactions').insert({
+  const payload = {
     org_id: orgId,
-    type: 'income',
+    type: 'income' as const,
     amount,
     description,
     date,
@@ -144,24 +144,31 @@ export async function syncStripeCharge(
     source_ref_id: charge.id,
     currency: charge.currency,
     is_reviewed: false,
+    deleted_at: null,
     raw_metadata: charge as unknown as Record<string, unknown>,
     vendor: charge.billing_details?.name ?? null,
-  })
+  }
+
+  if (existing?.deleted_at) {
+    await supabase.from('transactions').update(payload).eq('id', existing.id)
+  } else {
+    await supabase.from('transactions').insert(payload)
+  }
 
   // If this charge has a refund, record it as an expense
   if (charge.amount_refunded > 0) {
     const refundId = `${charge.id}_refund`
     const { data: refundExists } = await supabase
       .from('transactions')
-      .select('id')
+      .select('id, deleted_at')
       .eq('org_id', orgId)
       .eq('source_ref_id', refundId)
       .maybeSingle()
 
-    if (!refundExists) {
-      await supabase.from('transactions').insert({
+    if (!refundExists || refundExists.deleted_at) {
+      const refundPayload = {
         org_id: orgId,
-        type: 'expense',
+        type: 'expense' as const,
         amount: charge.amount_refunded / 100,
         description: `Refund: ${description}`,
         date,
@@ -172,7 +179,13 @@ export async function syncStripeCharge(
         source_ref_id: refundId,
         currency: charge.currency,
         is_reviewed: true,
-      })
+        deleted_at: null,
+      }
+      if (refundExists?.deleted_at) {
+        await supabase.from('transactions').update(refundPayload).eq('id', refundExists.id)
+      } else {
+        await supabase.from('transactions').insert(refundPayload)
+      }
     }
   }
 }
@@ -190,12 +203,12 @@ export async function syncStripeInvoicePaid(
   const refId = `invoice_${invoice.id}`
   const { data: existing } = await supabase
     .from('transactions')
-    .select('id')
+    .select('id, deleted_at')
     .eq('org_id', orgId)
     .eq('source_ref_id', refId)
     .maybeSingle()
 
-  if (existing) return
+  if (existing && !existing.deleted_at) return
 
   const date = invoice.status_transitions?.paid_at
     ? new Date(invoice.status_transitions.paid_at * 1000).toISOString().split('T')[0]
@@ -203,9 +216,9 @@ export async function syncStripeInvoicePaid(
 
   const description = invoice.description ?? `Invoice ${invoice.number ?? invoice.id}`
 
-  await supabase.from('transactions').insert({
+  const payload = {
     org_id: orgId,
-    type: 'income',
+    type: 'income' as const,
     amount,
     description,
     date,
@@ -217,8 +230,15 @@ export async function syncStripeInvoicePaid(
     source_ref_id: refId,
     currency: invoice.currency,
     is_reviewed: false,
+    deleted_at: null,
     raw_metadata: invoice as unknown as Record<string, unknown>,
-  })
+  }
+
+  if (existing?.deleted_at) {
+    await supabase.from('transactions').update(payload).eq('id', existing.id)
+  } else {
+    await supabase.from('transactions').insert(payload)
+  }
 }
 
 // ─── Payout sync ─────────────────────────────────────────────────────────────
@@ -231,18 +251,18 @@ export async function syncStripePayout(
   const refId = `payout_${payout.id}`
   const { data: existing } = await supabase
     .from('transactions')
-    .select('id')
+    .select('id, deleted_at')
     .eq('org_id', orgId)
     .eq('source_ref_id', refId)
     .maybeSingle()
 
-  if (existing) return
+  if (existing && !existing.deleted_at) return
 
   const date = new Date(payout.arrival_date * 1000).toISOString().split('T')[0]
 
-  await supabase.from('transactions').insert({
+  const payload = {
     org_id: orgId,
-    type: 'income',
+    type: 'income' as const,
     amount: payout.amount / 100,
     description: `Stripe payout${payout.description ? ` — ${payout.description}` : ''}`,
     date,
@@ -254,8 +274,15 @@ export async function syncStripePayout(
     source_ref_id: refId,
     currency: payout.currency,
     is_reviewed: true,
+    deleted_at: null,
     raw_metadata: payout as unknown as Record<string, unknown>,
-  })
+  }
+
+  if (existing?.deleted_at) {
+    await supabase.from('transactions').update(payload).eq('id', existing.id)
+  } else {
+    await supabase.from('transactions').insert(payload)
+  }
 }
 
 // ─── Pull sync (on-demand, last 30 days) ─────────────────────────────────────
