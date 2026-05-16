@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, Loader2, Bot, AlertTriangle, Sparkles, Plus, MessageSquare, Clock, Trash2, Menu, X } from 'lucide-react'
+import { Send, Loader2, Bot, AlertTriangle, Sparkles, Plus, MessageSquare, Clock, Trash2, Menu, X, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ConfirmationCard } from '@/components/chat/ConfirmationCard'
@@ -386,6 +386,50 @@ export default function AdvisorPage() {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, cancelled: true } : m)))
   }
 
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setLoading(true)
+
+    const formData = new FormData()
+    formData.append('file', file)
+    if (sessionId) formData.append('sessionId', sessionId)
+
+    try {
+      const res = await fetch('/api/chat/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setMessages((prev) => [
+          ...prev,
+          { id: uid(), role: 'user', content: `📎 ${file.name}` },
+          { id: uid(), role: 'assistant', content: data.error ?? 'Failed to process the file. Please try again.' },
+        ])
+        return
+      }
+
+      if (data.sessionId) {
+        setSessionId(data.sessionId)
+        localStorage.setItem(SESSION_STORAGE_KEY, data.sessionId)
+        refreshSessions()
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        { id: uid(), role: 'user', content: `📎 ${file.name}` },
+        { id: uid(), role: 'assistant', content: data.message, pendingAction: data.pendingAction ?? undefined },
+      ])
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: uid(), role: 'assistant', content: 'Network error while processing the file. Please try again.' },
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const isEmpty = messages.length === 0
 
   return (
@@ -536,9 +580,27 @@ export default function AdvisorPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about your finances, or say 'Add a $500 expense for Vercel'…"
+              placeholder="Ask about your finances, add expenses, or upload a PDF receipt…"
               rows={1}
               className="resize-none flex-1 min-h-[44px] max-h-32 overflow-y-auto text-base"
+              disabled={loading}
+            />
+            <label
+              htmlFor="chat-file-upload"
+              className={cn(
+                'cursor-pointer flex items-center justify-center h-11 w-11 shrink-0 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors',
+                loading && 'opacity-50 pointer-events-none'
+              )}
+              title="Upload PDF receipt or invoice"
+            >
+              <Paperclip className="h-4 w-4 text-gray-500" />
+            </label>
+            <input
+              id="chat-file-upload"
+              type="file"
+              accept=".pdf,application/pdf"
+              className="hidden"
+              onChange={handleFileUpload}
               disabled={loading}
             />
             <VoiceInput onTranscript={handleTranscript} disabled={loading} />

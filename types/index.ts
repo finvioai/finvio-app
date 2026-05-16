@@ -129,6 +129,8 @@ export type ChatIntent =
   | 'query_revenue'
   | 'query_profit'
   | 'query_project'
+  | 'query_expenses'
+  | 'query_help'
   | 'create_expense'
   | 'create_invoice'
   | 'add_income'
@@ -288,6 +290,7 @@ export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number]
 
 export type ConnectionProvider =
   | 'stripe'
+  | 'lemonsqueezy'
   | 'plaid'
   | 'shopify'
   | 'paypal'

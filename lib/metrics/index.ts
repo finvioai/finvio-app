@@ -799,3 +799,64 @@ export async function getDashboardMetrics(orgId: string): Promise<DashboardMetri
     revenueByType,
   }
 }
+
+// ─── Expenses breakdown (current-month actual, not rolling average) ────────────
+
+export async function getExpenses(
+  orgId: string,
+  month?: string
+): Promise<{
+  total_expenses: number
+  by_category: { category: string; amount: number; count: number }[]
+  top_transactions: { description: string; amount: number; date: string; category: string }[]
+  warnings: string[]
+}> {
+  const supabase = await createClient()
+  const warnings: string[] = []
+
+  const monthStart = month
+    ? month.slice(0, 7) + '-01'
+    : new Date().toISOString().slice(0, 7) + '-01'
+
+  const [year, mon] = monthStart.split('-').map(Number)
+  const nextMonth = mon === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(mon + 1).padStart(2, '0')}-01`
+
+  const { data: txns } = await supabase
+    .from('transactions')
+    .select('id, description, amount, date, category')
+    .eq('org_id', orgId)
+    .eq('type', 'expense')
+    .gte('date', monthStart)
+    .lt('date', nextMonth)
+    .is('deleted_at', null)
+    .order('amount', { ascending: false })
+
+  if (!txns?.length) {
+    warnings.push('No expenses recorded for this period.')
+    return { total_expenses: 0, by_category: [], top_transactions: [], warnings }
+  }
+
+  const total_expenses = txns.reduce((s, t) => s + (t.amount ?? 0), 0)
+
+  const catMap = new Map<string, { amount: number; count: number }>()
+  for (const t of txns) {
+    const cat = t.category ?? 'Uncategorized'
+    const existing = catMap.get(cat) ?? { amount: 0, count: 0 }
+    catMap.set(cat, { amount: existing.amount + (t.amount ?? 0), count: existing.count + 1 })
+  }
+
+  const by_category = [...catMap.entries()]
+    .map(([category, v]) => ({ category, ...v }))
+    .sort((a, b) => b.amount - a.amount)
+
+  const top_transactions = txns.slice(0, 5).map(t => ({
+    description: t.description ?? '',
+    amount: t.amount ?? 0,
+    date: t.date ?? '',
+    category: t.category ?? 'Uncategorized',
+  }))
+
+  return { total_expenses, by_category, top_transactions, warnings }
+}

@@ -19,10 +19,11 @@ interface ProviderConfig {
 }
 
 const PROVIDERS: ProviderConfig[] = [
-  { id: 'stripe',   name: 'Stripe',      description: 'Sync charges, invoices, subscriptions and customer data', logo: '💳', syncRoute: '/api/sync/stripe', oauthRedirect: true },
-  { id: 'plaid',    name: 'Plaid (Bank)', description: 'Connect your bank account for real-time transaction sync', logo: '🏦', comingSoon: true },
-  { id: 'shopify',  name: 'Shopify',      description: 'Import paid orders and revenue from your Shopify store',  logo: '🛍', syncRoute: '/api/sync/shopify' },
-  { id: 'paypal',   name: 'PayPal',       description: 'Sync PayPal transactions and settlements',                logo: '💰', syncRoute: '/api/sync/paypal' },
+  { id: 'stripe',        name: 'Stripe',         description: 'Sync charges, invoices, subscriptions and customer data',                         logo: '💳', syncRoute: '/api/sync/stripe',        oauthRedirect: true },
+  { id: 'lemonsqueezy', name: 'Lemon Squeezy',  description: 'Sync orders, subscriptions and customer revenue from your Lemon Squeezy store',    logo: '🍋', syncRoute: '/api/sync/lemonsqueezy' },
+  { id: 'plaid',        name: 'Plaid (Bank)',   description: 'Connect your bank account for real-time transaction sync',                          logo: '🏦', comingSoon: true },
+  { id: 'shopify',      name: 'Shopify',        description: 'Import paid orders and revenue from your Shopify store',                            logo: '🛍', syncRoute: '/api/sync/shopify' },
+  { id: 'paypal',       name: 'PayPal',         description: 'Sync PayPal transactions and settlements',                                          logo: '💰', syncRoute: '/api/sync/paypal' },
   { id: 'quickbooks', name: 'QuickBooks', description: 'Sync expenses, paid invoices and sales receipts from QuickBooks Online', logo: '📒', syncRoute: '/api/sync/quickbooks', oauthRedirect: true },
   { id: 'gmail',    name: 'Gmail',        description: 'Import income & expenses from financial emails (receipts, invoices, payments)', logo: '📧', syncRoute: '/api/sync/gmail',   oauthRedirect: true },
   { id: 'outlook',  name: 'Outlook',      description: 'Import income & expenses from financial emails (receipts, invoices, payments)', logo: '📨', syncRoute: '/api/sync/outlook', oauthRedirect: true },
@@ -193,7 +194,7 @@ async function loadPlaidLink(token: string, onSuccess: (publicToken: string) => 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type ModalType = 'shopify' | 'paypal' | 'plaid' | null
+type ModalType = 'shopify' | 'paypal' | 'plaid' | 'lemonsqueezy' | null
 
 const OAUTH_ERRORS: Record<string, string> = {
   stripe_not_configured: 'Stripe Connect is not configured. Add STRIPE_CLIENT_ID to your environment.',
@@ -255,6 +256,8 @@ export default function ConnectionsPage() {
   const [plaidClientId, setPlaidClientId] = useState('')
   const [plaidSecret, setPlaidSecret] = useState('')
   const [plaidEnv, setPlaidEnv] = useState<'sandbox' | 'development' | 'production'>('sandbox')
+  // Lemon Squeezy
+  const [lsApiKey, setLsApiKey] = useState('')
 
   async function fetchConnections() {
     const res = await fetch('/api/connections')
@@ -273,6 +276,7 @@ export default function ConnectionsPage() {
     const error = params.get('error')
     const CONNECTED_LABELS: Record<string, string> = {
       stripe: 'Stripe',
+      lemonsqueezy: 'Lemon Squeezy',
       quickbooks: 'QuickBooks',
       gmail: 'Gmail',
       outlook: 'Outlook',
@@ -299,12 +303,15 @@ export default function ConnectionsPage() {
     setPaypalSecret('')
     setPlaidClientId('')
     setPlaidSecret('')
+    setLsApiKey('')
   }
 
   async function handleConnect(providerId: string) {
     setPageError('')
     setPageSuccess('')
-    if (providerId === 'shopify') {
+    if (providerId === 'lemonsqueezy') {
+      setModal('lemonsqueezy')
+    } else if (providerId === 'shopify') {
       setModal('shopify')
     } else if (providerId === 'paypal') {
       setModal('paypal')
@@ -370,6 +377,7 @@ export default function ConnectionsPage() {
     setDisconnecting(true)
     const routeMap: Record<string, string> = {
       stripe: '/api/connections/stripe',
+      lemonsqueezy: '/api/connections/lemonsqueezy',
       plaid: '/api/connections/plaid',
       shopify: '/api/connections/shopify',
       paypal: '/api/connections/paypal',
@@ -402,6 +410,13 @@ export default function ConnectionsPage() {
     } finally {
       setModalLoading(false)
     }
+  }
+
+  async function submitLemonSqueezy() {
+    if (!lsApiKey.trim()) { setModalError('API key is required'); return }
+    await submitGeneric('/api/connections/lemonsqueezy', { api_key: lsApiKey.trim() }, () => {
+      setPageSuccess('Lemon Squeezy connected successfully and initial sync is complete.')
+    })
   }
 
   function submitShopify() {
@@ -477,6 +492,37 @@ export default function ConnectionsPage() {
             ))}
           </div>
         </>
+      )}
+
+      {/* Lemon Squeezy Modal */}
+      {modal === 'lemonsqueezy' && (
+        <Modal title="Connect Lemon Squeezy" onClose={closeModal}>
+          <div className="rounded-lg bg-yellow-50 border border-yellow-200 px-3 py-2.5 text-xs text-yellow-900 space-y-1">
+            <p className="font-medium">How to get your API key:</p>
+            <p>1. Log in to <strong>app.lemonsqueezy.com</strong></p>
+            <p>2. Go to <strong>Settings → API</strong></p>
+            <p>3. Click <strong>+ New API key</strong>, give it a name, and copy it</p>
+          </div>
+          <FieldInput label="API Key" hint="Paste your Lemon Squeezy API key below">
+            <input
+              type="password"
+              value={lsApiKey}
+              onChange={(e) => setLsApiKey(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitLemonSqueezy()}
+              placeholder="eyJ0eXAiOiJKV1Qi…"
+              className={cn(inputCls, 'font-mono')}
+              autoComplete="off"
+              autoFocus
+            />
+          </FieldInput>
+          {modalError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="h-4 w-4 shrink-0" />{modalError}</p>}
+          <div className="flex gap-3 pt-1">
+            <Button onClick={submitLemonSqueezy} disabled={modalLoading || !lsApiKey.trim()} className="flex-1">
+              {modalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect Lemon Squeezy'}
+            </Button>
+            <Button variant="outline" onClick={closeModal} disabled={modalLoading}>Cancel</Button>
+          </div>
+        </Modal>
       )}
 
       {/* Shopify Modal */}
