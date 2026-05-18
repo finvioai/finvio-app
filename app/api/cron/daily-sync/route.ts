@@ -36,28 +36,24 @@ export async function GET(request: NextRequest) {
         const result = await runStripePullSync(conn.org_id, conn.id, supabase)
         results.push({ org_id: conn.org_id, provider: 'stripe', ...result })
 
-        // Run reconciliation after each Stripe sync if Plaid is also connected
-        const { data: plaidConn } = await supabase
-          .from('connections')
-          .select('id')
-          .eq('org_id', conn.org_id)
-          .eq('provider', 'plaid')
-          .eq('status', 'active')
-          .maybeSingle()
-
-        if (plaidConn) {
-          const reconResult = await reconcileOrgTransactions(conn.org_id, supabase)
-          results.push({ org_id: conn.org_id, provider: 'reconciliation', ...reconResult })
-        }
+        // Always reconcile after Stripe sync: matches payouts→bank deposits,
+        // auto-matches income→open invoices, and flags cross-source duplicates.
+        const reconResult = await reconcileOrgTransactions(conn.org_id, supabase)
+        results.push({ org_id: conn.org_id, provider: 'reconciliation', ...reconResult })
       } else if (conn.provider === 'plaid') {
         const result = await syncPlaidTransactions(conn.org_id, conn.id, supabase)
         results.push({ org_id: conn.org_id, provider: 'plaid', ...result })
       } else if (conn.provider === 'gmail') {
         const result = await syncGmailTransactions(conn.org_id, conn.id, supabase)
         results.push({ org_id: conn.org_id, provider: 'gmail', ...result })
+        // Run invoice matching + duplicate detection after email syncs
+        const reconResult = await reconcileOrgTransactions(conn.org_id, supabase)
+        results.push({ org_id: conn.org_id, provider: 'reconciliation', ...reconResult })
       } else if (conn.provider === 'outlook') {
         const result = await syncOutlookTransactions(conn.org_id, conn.id, supabase)
         results.push({ org_id: conn.org_id, provider: 'outlook', ...result })
+        const reconResult = await reconcileOrgTransactions(conn.org_id, supabase)
+        results.push({ org_id: conn.org_id, provider: 'reconciliation', ...reconResult })
       }
     } catch (err) {
       results.push({

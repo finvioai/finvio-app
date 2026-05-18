@@ -19,16 +19,17 @@ interface ProviderConfig {
 }
 
 const PROVIDERS: ProviderConfig[] = [
-  { id: 'stripe',   name: 'Stripe',      description: 'Sync charges, invoices, subscriptions and customer data', logo: '💳', syncRoute: '/api/sync/stripe', oauthRedirect: true },
-  { id: 'plaid',    name: 'Plaid (Bank)', description: 'Connect your bank account for real-time transaction sync', logo: '🏦', comingSoon: true },
-  { id: 'shopify',  name: 'Shopify',      description: 'Import paid orders and revenue from your Shopify store',  logo: '🛍', syncRoute: '/api/sync/shopify' },
-  { id: 'paypal',   name: 'PayPal',       description: 'Sync PayPal transactions and settlements',                logo: '💰', syncRoute: '/api/sync/paypal' },
+  { id: 'stripe',        name: 'Stripe',         description: 'Sync charges, invoices, subscriptions and customer data',                         logo: '💳', syncRoute: '/api/sync/stripe',        oauthRedirect: true },
+  { id: 'lemonsqueezy', name: 'Lemon Squeezy',  description: 'Sync orders, subscriptions and customer revenue from your Lemon Squeezy store',    logo: '🍋', syncRoute: '/api/sync/lemonsqueezy' },
+  { id: 'plaid',        name: 'Plaid (Bank)',   description: 'Connect your bank account for real-time transaction sync',                          logo: '🏦', comingSoon: true },
+  { id: 'shopify',      name: 'Shopify',        description: 'Import paid orders and revenue from your Shopify store',                            logo: '🛍', syncRoute: '/api/sync/shopify' },
+  { id: 'paypal',       name: 'PayPal',         description: 'Sync PayPal transactions and settlements',                                          logo: '💰', syncRoute: '/api/sync/paypal' },
   { id: 'quickbooks', name: 'QuickBooks', description: 'Sync expenses, paid invoices and sales receipts from QuickBooks Online', logo: '📒', syncRoute: '/api/sync/quickbooks', oauthRedirect: true },
   { id: 'gmail',    name: 'Gmail',        description: 'Import income & expenses from financial emails (receipts, invoices, payments)', logo: '📧', syncRoute: '/api/sync/gmail',   oauthRedirect: true },
   { id: 'outlook',  name: 'Outlook',      description: 'Import income & expenses from financial emails (receipts, invoices, payments)', logo: '📨', syncRoute: '/api/sync/outlook', oauthRedirect: true },
-  { id: 'mercury',  name: 'Mercury',      description: 'Connect Mercury business banking',                        logo: '☿',  comingSoon: true },
+  { id: 'mercury',      name: 'Mercury',        description: 'Sync bank transactions and track your real cash balance from Mercury business banking',  logo: '☿',  syncRoute: '/api/sync/mercury' },
   { id: 'xero',     name: 'Xero',         description: 'Import accounting data from Xero',                       logo: '📊', comingSoon: true },
-  { id: 'brex',     name: 'Brex',         description: 'Sync Brex card transactions and expenses',               logo: '💼', comingSoon: true },
+  { id: 'brex',     name: 'Brex',         description: 'Sync Brex card transactions and expenses',               logo: '💼', syncRoute: '/api/sync/brex', oauthRedirect: true },
 ]
 
 function fmtDate(iso: string | null) {
@@ -193,7 +194,7 @@ async function loadPlaidLink(token: string, onSuccess: (publicToken: string) => 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type ModalType = 'shopify' | 'paypal' | 'plaid' | null
+type ModalType = 'shopify' | 'paypal' | 'plaid' | 'lemonsqueezy' | 'mercury' | null
 
 const OAUTH_ERRORS: Record<string, string> = {
   stripe_not_configured: 'Stripe Connect is not configured. Add STRIPE_CLIENT_ID to your environment.',
@@ -231,6 +232,13 @@ const OAUTH_ERRORS: Record<string, string> = {
   outlook_no_org: 'Organization not found. Please try again.',
   outlook_token_exchange: 'Failed to exchange Outlook authorization code. Please try again.',
   outlook_save_failed: 'Failed to save Outlook connection. Please try again.',
+  brex_not_configured: 'Brex is not configured on this platform. Add BREX_CLIENT_ID and BREX_CLIENT_SECRET to your environment.',
+  brex_denied: 'Brex authorization was cancelled.',
+  brex_invalid_callback: 'Invalid Brex callback. Please try again.',
+  brex_state_mismatch: 'Authorization request expired. Please try again.',
+  brex_no_org: 'Organization not found. Please try again.',
+  brex_token_exchange: 'Failed to exchange Brex authorization code. Please try again.',
+  brex_save_failed: 'Failed to save Brex connection. Please try again.',
 }
 
 export default function ConnectionsPage() {
@@ -255,6 +263,11 @@ export default function ConnectionsPage() {
   const [plaidClientId, setPlaidClientId] = useState('')
   const [plaidSecret, setPlaidSecret] = useState('')
   const [plaidEnv, setPlaidEnv] = useState<'sandbox' | 'development' | 'production'>('sandbox')
+  // Lemon Squeezy
+  const [lsApiKey, setLsApiKey] = useState('')
+  // Mercury
+  const [mercuryToken, setMercuryToken] = useState('')
+  const [mercurySandbox, setMercurySandbox] = useState(false)
 
   async function fetchConnections() {
     const res = await fetch('/api/connections')
@@ -273,10 +286,13 @@ export default function ConnectionsPage() {
     const error = params.get('error')
     const CONNECTED_LABELS: Record<string, string> = {
       stripe: 'Stripe',
+      lemonsqueezy: 'Lemon Squeezy',
+      mercury: 'Mercury',
       quickbooks: 'QuickBooks',
       gmail: 'Gmail',
       outlook: 'Outlook',
       shopify: 'Shopify',
+      brex: 'Brex',
     }
     if (connected && CONNECTED_LABELS[connected]) {
       setPageSuccess(`${CONNECTED_LABELS[connected]} connected successfully and initial sync is complete.`)
@@ -299,12 +315,19 @@ export default function ConnectionsPage() {
     setPaypalSecret('')
     setPlaidClientId('')
     setPlaidSecret('')
+    setLsApiKey('')
+    setMercuryToken('')
+    setMercurySandbox(false)
   }
 
   async function handleConnect(providerId: string) {
     setPageError('')
     setPageSuccess('')
-    if (providerId === 'shopify') {
+    if (providerId === 'mercury') {
+      setModal('mercury')
+    } else if (providerId === 'lemonsqueezy') {
+      setModal('lemonsqueezy')
+    } else if (providerId === 'shopify') {
       setModal('shopify')
     } else if (providerId === 'paypal') {
       setModal('paypal')
@@ -370,12 +393,15 @@ export default function ConnectionsPage() {
     setDisconnecting(true)
     const routeMap: Record<string, string> = {
       stripe: '/api/connections/stripe',
+      lemonsqueezy: '/api/connections/lemonsqueezy',
+      mercury: '/api/connections/mercury',
       plaid: '/api/connections/plaid',
       shopify: '/api/connections/shopify',
       paypal: '/api/connections/paypal',
       quickbooks: '/api/connections/quickbooks',
       gmail: '/api/connections/gmail',
       outlook: '/api/connections/outlook',
+      brex: '/api/connections/brex',
     }
     try {
       const url = routeMap[disconnectTarget.provider]
@@ -402,6 +428,20 @@ export default function ConnectionsPage() {
     } finally {
       setModalLoading(false)
     }
+  }
+
+  async function submitMercury() {
+    if (!mercuryToken.trim()) { setModalError('API token is required'); return }
+    await submitGeneric('/api/connections/mercury', { api_token: mercuryToken.trim(), sandbox: mercurySandbox }, () => {
+      setPageSuccess('Mercury connected successfully and initial sync is complete.')
+    })
+  }
+
+  async function submitLemonSqueezy() {
+    if (!lsApiKey.trim()) { setModalError('API key is required'); return }
+    await submitGeneric('/api/connections/lemonsqueezy', { api_key: lsApiKey.trim() }, () => {
+      setPageSuccess('Lemon Squeezy connected successfully and initial sync is complete.')
+    })
   }
 
   function submitShopify() {
@@ -477,6 +517,82 @@ export default function ConnectionsPage() {
             ))}
           </div>
         </>
+      )}
+
+      {/* Mercury Modal */}
+      {modal === 'mercury' && (
+        <Modal title="Connect Mercury" onClose={closeModal}>
+          <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800 space-y-1">
+            <p className="font-medium">How to get your API token:</p>
+            <p>1. Log in to <strong>mercury.com</strong> → click your name → <strong>Settings</strong></p>
+            <p>2. Go to the <strong>API Tokens</strong> tab</p>
+            <p>3. Click <strong>+ New token</strong>, name it (e.g. <em>Finvio</em>), select <strong>Read-only</strong></p>
+            <p>4. Copy the token — it is shown only once</p>
+          </div>
+          <FieldInput label="API Token" hint="Use a Read-only token — no IP whitelist required">
+            <input
+              type="password"
+              value={mercuryToken}
+              onChange={(e) => setMercuryToken(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitMercury()}
+              placeholder="secret-token:mercury_production_…"
+              className={cn(inputCls, 'font-mono')}
+              autoComplete="off"
+              autoFocus
+            />
+          </FieldInput>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">Environment</label>
+            <div className="flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+              <button onClick={() => setMercurySandbox(false)}
+                className={cn('px-3 py-1.5', !mercurySandbox ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50')}>
+                Production
+              </button>
+              <button onClick={() => setMercurySandbox(true)}
+                className={cn('px-3 py-1.5 border-l border-gray-300', mercurySandbox ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50')}>
+                Sandbox
+              </button>
+            </div>
+          </div>
+          {modalError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="h-4 w-4 shrink-0" />{modalError}</p>}
+          <div className="flex gap-3 pt-1">
+            <Button onClick={submitMercury} disabled={modalLoading || !mercuryToken.trim()} className="flex-1">
+              {modalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect Mercury'}
+            </Button>
+            <Button variant="outline" onClick={closeModal} disabled={modalLoading}>Cancel</Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Lemon Squeezy Modal */}
+      {modal === 'lemonsqueezy' && (
+        <Modal title="Connect Lemon Squeezy" onClose={closeModal}>
+          <div className="rounded-lg bg-yellow-50 border border-yellow-200 px-3 py-2.5 text-xs text-yellow-900 space-y-1">
+            <p className="font-medium">How to get your API key:</p>
+            <p>1. Log in to <strong>app.lemonsqueezy.com</strong></p>
+            <p>2. Go to <strong>Settings → API</strong></p>
+            <p>3. Click <strong>+ New API key</strong>, give it a name, and copy it</p>
+          </div>
+          <FieldInput label="API Key" hint="Paste your Lemon Squeezy API key below">
+            <input
+              type="password"
+              value={lsApiKey}
+              onChange={(e) => setLsApiKey(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitLemonSqueezy()}
+              placeholder="eyJ0eXAiOiJKV1Qi…"
+              className={cn(inputCls, 'font-mono')}
+              autoComplete="off"
+              autoFocus
+            />
+          </FieldInput>
+          {modalError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="h-4 w-4 shrink-0" />{modalError}</p>}
+          <div className="flex gap-3 pt-1">
+            <Button onClick={submitLemonSqueezy} disabled={modalLoading || !lsApiKey.trim()} className="flex-1">
+              {modalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connect Lemon Squeezy'}
+            </Button>
+            <Button variant="outline" onClick={closeModal} disabled={modalLoading}>Cancel</Button>
+          </div>
+        </Modal>
       )}
 
       {/* Shopify Modal */}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, TrendingDown, TrendingUp, AlertTriangle, CheckCircle2, Loader2, Paperclip, Trash2, TriangleAlert } from 'lucide-react'
+import { Plus, TrendingDown, TrendingUp, AlertTriangle, CheckCircle2, Loader2, Paperclip, Trash2, TriangleAlert, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -15,7 +15,7 @@ import {
 import { AddExpenseModal } from '@/components/modals/AddExpenseModal'
 import { AddIncomeModal } from '@/components/modals/AddIncomeModal'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, RECURRENCE_OPTIONS } from '@/types'
-import type { Transaction, Project } from '@/types'
+import type { Transaction, Project, Invoice } from '@/types'
 import { cn } from '@/lib/utils'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -28,13 +28,16 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const DELETABLE_SOURCES = new Set(['manual', 'invoice'])
+// manual + invoice always deletable; gmail is deletable because email parsing
+// can be inaccurate and users should be able to remove false positives
+const DELETABLE_SOURCES = new Set(['manual', 'invoice', 'gmail'])
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [projects, setProjects] = useState<Project[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all')
   const [showExpenseModal, setShowExpenseModal] = useState(false)
@@ -47,9 +50,10 @@ export default function TransactionsPage() {
     try {
       const params = new URLSearchParams({ limit: '200' })
       if (typeFilter !== 'all') params.set('type', typeFilter)
-      const [txnRes, projRes] = await Promise.all([
+      const [txnRes, projRes, invRes] = await Promise.all([
         fetch(`/api/transactions?${params}`),
         fetch('/api/projects'),
+        fetch('/api/invoices?limit=200'),
       ])
       if (txnRes.ok) {
         const data = await txnRes.json()
@@ -58,6 +62,10 @@ export default function TransactionsPage() {
       if (projRes.ok) {
         const data = await projRes.json()
         setProjects(data.projects ?? [])
+      }
+      if (invRes.ok) {
+        const data = await invRes.json()
+        setInvoices(data.invoices ?? [])
       }
     } finally {
       setLoading(false)
@@ -90,15 +98,39 @@ export default function TransactionsPage() {
     }
   }
 
-  async function handleProjectChange(id: string, projectId: string | null) {
+  // Handles the combined Project / Invoice dropdown — clears the other field
+  // when switching, sends both in a single PATCH to avoid race conditions.
+  // Also keeps the local invoices state in sync so the UI doesn't require a
+  // full page refresh to reflect status changes (paid / reverted to sent).
+  async function handleLinkedEntityChange(
+    id: string,
+    projectId: string | null,
+    invoiceId: string | null
+  ) {
+    // Capture old invoice_id before any state update
+    const oldInvoiceId = transactions.find((t) => t.id === id)?.invoice_id ?? null
+
     const res = await fetch('/api/transactions', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, project_id: projectId }),
+      body: JSON.stringify({ id, project_id: projectId, invoice_id: invoiceId }),
     })
     if (res.ok) {
       const { transaction } = await res.json()
       setTransactions((prev) => prev.map((t) => t.id === id ? transaction : t))
+
+      // Keep invoices state in sync with what the API just did:
+      // - Newly linked invoice → mark paid in local state
+      // - Previously linked invoice (now cleared/switched) → revert to sent
+      setInvoices((prev) => prev.map((inv) => {
+        if (invoiceId && inv.id === invoiceId) {
+          return { ...inv, status: 'paid', paid_at: new Date().toISOString() }
+        }
+        if (oldInvoiceId && inv.id === oldInvoiceId && oldInvoiceId !== invoiceId) {
+          return { ...inv, status: 'sent', paid_at: null }
+        }
+        return inv
+      }))
     }
   }
 
@@ -133,9 +165,9 @@ export default function TransactionsPage() {
   }
 
   const unreviewedCount = transactions.filter((t) => !t.is_reviewed).length
+  const duplicateCount = transactions.filter((t) => t.tags?.includes('potential_duplicate')).length
   const totalIncome = transactions.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const totalExpenses = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
-  const projectMap = Object.fromEntries(projects.map((p) => [p.id, p.name]))
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
@@ -197,6 +229,17 @@ export default function TransactionsPage() {
         </div>
       )}
 
+      {/* Potential duplicate warning */}
+      {duplicateCount > 0 && (
+        <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 flex items-center gap-3">
+          <Copy className="h-4 w-4 text-orange-500 shrink-0" />
+          <span className="text-sm text-orange-800">
+            <strong>{duplicateCount} transaction{duplicateCount !== 1 ? 's' : ''}</strong> may be duplicates from different integrations.
+            Rows marked with <Copy className="inline h-3.5 w-3.5 text-orange-500 mx-0.5" /> need your review — delete one if they represent the same event.
+          </span>
+        </div>
+      )}
+
       {/* Unified transactions table */}
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
@@ -246,7 +289,7 @@ export default function TransactionsPage() {
                   <th className="w-[170px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
                   <th className="w-[140px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
                   <th className="w-[110px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Recurrence</th>
-                  <th className="w-[110px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project</th>
+                  <th className="w-[130px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project / Invoice</th>
                   <th className="hidden xl:table-cell w-[80px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
                   <th className="hidden xl:table-cell w-[70px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Receipt</th>
                   <th className="w-[96px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Amount</th>
@@ -259,9 +302,9 @@ export default function TransactionsPage() {
                     key={txn.id}
                     txn={txn}
                     projects={projects}
-                    projectMap={projectMap}
+                    invoices={invoices}
                     onCategoryChange={handleCategoryChange}
-                    onProjectChange={handleProjectChange}
+                    onLinkedEntityChange={handleLinkedEntityChange}
                     onRecurrenceChange={handleRecurrenceChange}
                     onMarkReviewed={handleMarkReviewed}
                     onDelete={(t) => setDeleteTarget(t)}
@@ -282,6 +325,9 @@ export default function TransactionsPage() {
               {deleteTarget && (
                 <>
                   <strong>{deleteTarget.description}</strong> — {fmt(deleteTarget.amount)} on {fmtDate(deleteTarget.date)}
+                  {deleteTarget.source === 'gmail' && (
+                    <><br /><span className="text-amber-700">This was imported from Gmail. Deleting it will not affect your Gmail connection.</span></>
+                  )}
                   <br />
                   This will remove it from all calculations. This action cannot be undone.
                 </>
@@ -320,18 +366,18 @@ export default function TransactionsPage() {
 function TransactionRow({
   txn,
   projects,
-  projectMap,
+  invoices,
   onCategoryChange,
-  onProjectChange,
+  onLinkedEntityChange,
   onRecurrenceChange,
   onMarkReviewed,
   onDelete,
 }: {
   txn: Transaction
   projects: Project[]
-  projectMap: Record<string, string>
+  invoices: Invoice[]
   onCategoryChange: (id: string, category: string) => Promise<void>
-  onProjectChange: (id: string, projectId: string | null) => Promise<void>
+  onLinkedEntityChange: (id: string, projectId: string | null, invoiceId: string | null) => Promise<void>
   onRecurrenceChange: (id: string, recurrence: string | null) => Promise<void>
   onMarkReviewed: (id: string) => Promise<void>
   onDelete: (txn: Transaction) => void
@@ -339,9 +385,23 @@ function TransactionRow({
   const [saving, setSaving] = useState(false)
   const categories = txn.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
   const activeProjects = projects.filter((p) => p.status === 'active')
-  const txnWithProject = txn as Transaction & { project_id?: string | null }
+  // For income: show open invoices + any already-linked invoice (even if paid)
+  const openInvoices = invoices.filter(
+    (inv) =>
+      inv.status === 'sent' ||
+      inv.status === 'overdue' ||
+      inv.id === txn.invoice_id
+  )
 
   const needsReview = !txn.is_reviewed || txn.category_confidence === 'low'
+  const isPotentialDuplicate = txn.tags?.includes('potential_duplicate')
+
+  // Derive the combined dropdown value from the transaction state
+  const linkedValue = txn.project_id
+    ? `project:${txn.project_id}`
+    : txn.invoice_id
+    ? `invoice:${txn.invoice_id}`
+    : ''
 
   async function handleCategory(e: React.ChangeEvent<HTMLSelectElement>) {
     setSaving(true)
@@ -349,9 +409,12 @@ function TransactionRow({
     setSaving(false)
   }
 
-  async function handleProject(e: React.ChangeEvent<HTMLSelectElement>) {
+  async function handleLinkedEntity(e: React.ChangeEvent<HTMLSelectElement>) {
     setSaving(true)
-    await onProjectChange(txn.id, e.target.value || null)
+    const value = e.target.value
+    const projectId = value.startsWith('project:') ? value.slice(8) : null
+    const invoiceId = value.startsWith('invoice:') ? value.slice(8) : null
+    await onLinkedEntityChange(txn.id, projectId, invoiceId)
     setSaving(false)
   }
 
@@ -367,10 +430,19 @@ function TransactionRow({
     setSaving(false)
   }
 
+  // Show the dropdown if: there are projects to pick from, there are open
+  // invoices for income rows, OR the row already has something linked (so the
+  // user can always select "—" to clear the link).
+  const hasLinkedOptions =
+    !!linkedValue ||
+    activeProjects.length > 0 ||
+    (txn.type === 'income' && openInvoices.length > 0)
+
   return (
     <tr className={cn(
       'hover:bg-gray-50 transition-colors',
-      needsReview && 'bg-amber-50/40'
+      needsReview && 'bg-amber-50/40',
+      isPotentialDuplicate && 'bg-orange-50/40'
     )}>
       <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(txn.date)}</td>
       <td className="px-4 py-3 max-w-0">
@@ -414,18 +486,37 @@ function TransactionRow({
         </select>
       </td>
       <td className="px-4 py-3">
-        {activeProjects.length > 0 ? (
+        {hasLinkedOptions ? (
           <select
-            value={txnWithProject.project_id ?? ''}
-            onChange={handleProject}
+            value={linkedValue}
+            onChange={handleLinkedEntity}
             disabled={saving}
             className="h-7 w-full rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
           >
             <option value="">—</option>
-            {activeProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {activeProjects.length > 0 && (
+              <optgroup label="Projects">
+                {activeProjects.map((p) => (
+                  <option key={p.id} value={`project:${p.id}`}>{p.name}</option>
+                ))}
+              </optgroup>
+            )}
+            {txn.type === 'income' && openInvoices.length > 0 && (
+              <optgroup label="Invoices">
+                {openInvoices.map((inv) => (
+                  <option key={inv.id} value={`invoice:${inv.id}`}>
+                    {inv.invoice_number}{inv.customer_name ? ` — ${inv.customer_name}` : ''} ({fmt(inv.amount)})
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
-        ) : txnWithProject.project_id ? (
-          <span className="text-xs text-gray-600">{projectMap[txnWithProject.project_id] ?? '—'}</span>
+        ) : linkedValue ? (
+          <span className="text-xs text-gray-600">
+            {linkedValue.startsWith('project:')
+              ? projects.find((p) => p.id === txn.project_id)?.name ?? '—'
+              : invoices.find((inv) => inv.id === txn.invoice_id)?.invoice_number ?? '—'}
+          </span>
         ) : (
           <span className="text-xs text-gray-400">—</span>
         )}
@@ -457,6 +548,13 @@ function TransactionRow({
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-1">
+          {/* Duplicate indicator */}
+          {isPotentialDuplicate && (
+            <Copy
+              className="h-3.5 w-3.5 text-orange-500 shrink-0"
+              aria-label="Potential duplicate — may exist in another integration"
+            />
+          )}
           {/* Mark reviewed — shown when row needs review */}
           {needsReview && (
             <button
@@ -468,7 +566,7 @@ function TransactionRow({
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
             </button>
           )}
-          {/* Delete — shown only for manual / invoice source */}
+          {/* Delete — shown only for deletable sources */}
           {DELETABLE_SOURCES.has(txn.source) && (
             <button
               onClick={() => onDelete(txn)}

@@ -146,6 +146,7 @@ const PatchSchema = z.object({
   notes: z.string().optional(),
   vendor: z.string().optional(),
   project_id: z.string().uuid().nullable().optional(),
+  invoice_id: z.string().uuid().nullable().optional(),
 })
 
 export async function PATCH(request: NextRequest) {
@@ -167,12 +168,12 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { id, category, recurrence, is_reviewed, notes, vendor, project_id } = parsed.data
+  const { id, category, recurrence, is_reviewed, notes, vendor, project_id, invoice_id } = parsed.data
 
-  // Fetch before-state for audit
+  // Fetch before-state for audit and invoice sync
   const { data: before } = await supabase
     .from('transactions')
-    .select('category, is_reviewed, notes, vendor, description, type')
+    .select('category, is_reviewed, notes, vendor, description, type, invoice_id')
     .eq('id', id)
     .eq('org_id', orgId)
     .single()
@@ -191,6 +192,7 @@ export async function PATCH(request: NextRequest) {
   if (notes !== undefined) updateData.notes = notes
   if (vendor !== undefined) updateData.vendor = vendor
   if (project_id !== undefined) updateData.project_id = project_id
+  if (invoice_id !== undefined) updateData.invoice_id = invoice_id
 
   const { data: txn, error } = await supabase
     .from('transactions')
@@ -207,13 +209,40 @@ export async function PATCH(request: NextRequest) {
     await saveOverride(orgId, before.description, category)
   }
 
+  // Sync invoice status when the invoice link changes
+  if (invoice_id !== undefined) {
+    const oldInvoiceId = (before as { invoice_id?: string | null }).invoice_id ?? null
+    const newInvoiceId = invoice_id
+
+    // Revert the previously linked invoice to 'sent' if it was paid by this link
+    if (oldInvoiceId && oldInvoiceId !== newInvoiceId) {
+      await supabase
+        .from('invoices')
+        .update({ status: 'sent', paid_at: null })
+        .eq('id', oldInvoiceId)
+        .eq('org_id', orgId)
+        .eq('status', 'paid')
+    }
+
+    // Mark the newly linked invoice as paid
+    if (newInvoiceId) {
+      await supabase
+        .from('invoices')
+        .update({ status: 'paid', paid_at: new Date().toISOString() })
+        .eq('id', newInvoiceId)
+        .eq('org_id', orgId)
+    }
+  }
+
   return NextResponse.json({ transaction: txn })
 }
 
 // ─── DELETE /api/transactions ─────────────────────────────────────────────────
-// Soft-deletes a manually-created transaction. Imported transactions (source ≠
-// 'manual' | 'invoice') are rejected with 403 — remove them via the integration
-// disconnect flow instead.
+// Soft-deletes a transaction. Allowed sources: manual, invoice, gmail.
+// Gmail is permitted because email parsing can be inaccurate and the user
+// may need to remove false positives without disconnecting the integration.
+// All other integrations (Stripe, Brex, Plaid, etc.) are authoritative sources
+// that should only be removed via the integration disconnect flow.
 
 export async function DELETE(request: NextRequest) {
   const supabase = await createClient()
@@ -246,9 +275,9 @@ export async function DELETE(request: NextRequest) {
 
   if (!txn) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
 
-  if (!['manual', 'invoice'].includes(txn.source)) {
+  if (!['manual', 'invoice', 'gmail'].includes(txn.source)) {
     return NextResponse.json(
-      { error: 'Only manually created transactions can be deleted. To remove imported data, disconnect the integration.' },
+      { error: 'This transaction cannot be deleted individually. To remove integration data, disconnect the integration.' },
       { status: 403 }
     )
   }

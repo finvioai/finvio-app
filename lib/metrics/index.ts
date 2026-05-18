@@ -189,19 +189,26 @@ export async function getCashBalance(orgId: string): Promise<{ cash: number; war
   const supabase = await createClient()
   const warnings: string[] = []
 
-  // Primary: Plaid balance metadata
-  const { data: conn } = await supabase
+  // Primary: sum balance metadata from all active bank connections (Plaid, Mercury)
+  const { data: bankConns } = await supabase
     .from('connections')
-    .select('metadata')
+    .select('provider, metadata')
     .eq('org_id', orgId)
-    .eq('provider', 'plaid')
+    .in('provider', ['plaid', 'mercury', 'brex'])
     .eq('status', 'active')
-    .maybeSingle()
 
-  if (conn?.metadata) {
-    const meta = conn.metadata as Record<string, unknown>
-    if (typeof meta.balance === 'number') {
-      return { cash: meta.balance, warnings }
+  if (bankConns?.length) {
+    let bankTotal = 0
+    let hasBalance = false
+    for (const conn of bankConns) {
+      const meta = (conn.metadata ?? {}) as Record<string, unknown>
+      if (typeof meta.balance === 'number') {
+        bankTotal += meta.balance
+        hasBalance = true
+      }
+    }
+    if (hasBalance) {
+      return { cash: bankTotal, warnings }
     }
   }
 
@@ -425,7 +432,10 @@ export async function getDataCompleteness(orgId: string): Promise<DataCompletene
   const connMap = new Map((connections ?? []).map((c) => [c.provider, c.status]))
 
   const stripeConnected = connMap.get('stripe') === 'active'
-  const bankConnected = connMap.get('plaid') === 'active'
+  const plaidConnected = connMap.get('plaid') === 'active'
+  const mercuryConnected = connMap.get('mercury') === 'active'
+  const brexConnected = connMap.get('brex') === 'active'
+  const bankConnected = plaidConnected || mercuryConnected || brexConnected
   const shopifyConnected = connMap.get('shopify') === 'active'
   const paypalConnected = connMap.get('paypal') === 'active'
 
@@ -459,7 +469,7 @@ export async function getDataCompleteness(orgId: string): Promise<DataCompletene
   else if (hasExpenses) expenseCompleteness = 'medium'
 
   if (!stripeConnected) warnings.push('Connect Stripe for accurate revenue tracking.')
-  if (!bankConnected) warnings.push('Connect a bank account via Plaid for expense tracking.')
+  if (!bankConnected) warnings.push('Connect a bank account (Brex, Mercury, or Plaid) for expense tracking.')
   if (!hasRevenue) warnings.push('No revenue data found. Add income manually or connect an integration.')
 
   const score =
@@ -798,4 +808,65 @@ export async function getDashboardMetrics(orgId: string): Promise<DashboardMetri
     avgMonthlyRevenue,
     revenueByType,
   }
+}
+
+// ─── Expenses breakdown (current-month actual, not rolling average) ────────────
+
+export async function getExpenses(
+  orgId: string,
+  month?: string
+): Promise<{
+  total_expenses: number
+  by_category: { category: string; amount: number; count: number }[]
+  top_transactions: { description: string; amount: number; date: string; category: string }[]
+  warnings: string[]
+}> {
+  const supabase = await createClient()
+  const warnings: string[] = []
+
+  const monthStart = month
+    ? month.slice(0, 7) + '-01'
+    : new Date().toISOString().slice(0, 7) + '-01'
+
+  const [year, mon] = monthStart.split('-').map(Number)
+  const nextMonth = mon === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(mon + 1).padStart(2, '0')}-01`
+
+  const { data: txns } = await supabase
+    .from('transactions')
+    .select('id, description, amount, date, category')
+    .eq('org_id', orgId)
+    .eq('type', 'expense')
+    .gte('date', monthStart)
+    .lt('date', nextMonth)
+    .is('deleted_at', null)
+    .order('amount', { ascending: false })
+
+  if (!txns?.length) {
+    warnings.push('No expenses recorded for this period.')
+    return { total_expenses: 0, by_category: [], top_transactions: [], warnings }
+  }
+
+  const total_expenses = txns.reduce((s, t) => s + (t.amount ?? 0), 0)
+
+  const catMap = new Map<string, { amount: number; count: number }>()
+  for (const t of txns) {
+    const cat = t.category ?? 'Uncategorized'
+    const existing = catMap.get(cat) ?? { amount: 0, count: 0 }
+    catMap.set(cat, { amount: existing.amount + (t.amount ?? 0), count: existing.count + 1 })
+  }
+
+  const by_category = [...catMap.entries()]
+    .map(([category, v]) => ({ category, ...v }))
+    .sort((a, b) => b.amount - a.amount)
+
+  const top_transactions = txns.slice(0, 5).map(t => ({
+    description: t.description ?? '',
+    amount: t.amount ?? 0,
+    date: t.date ?? '',
+    category: t.category ?? 'Uncategorized',
+  }))
+
+  return { total_expenses, by_category, top_transactions, warnings }
 }

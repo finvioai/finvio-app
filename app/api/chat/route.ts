@@ -21,9 +21,10 @@ import {
   getGrossProfit,
   getRevenueByType,
   getProjectSummary,
+  getExpenses,
 } from '@/lib/metrics'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, type ChatIntent, type PendingAction } from '@/types'
-import { z } from 'zod'
+import { ExpenseSchema, InvoiceSchema, IncomeSchema } from '@/lib/llm/chatSchemas'
 
 // ─── rate limiting (simple DB counter) ──────────────────────────────────────
 
@@ -62,6 +63,39 @@ function buildSystemPrompt(context: Record<string, unknown>): string {
   return `You are Finvio, an AI financial advisor.
 
 ${modelGuidance}
+
+WHAT I CAN DO:
+1. Answer any question about business finances — revenue, expenses, MRR, burn rate, runway, profit, customers, projects, forecasts.
+2. Create transactions with user approval:
+   - "Add $200 expense for Figma" → shows a confirmation card, saves only after the user clicks Confirm.
+   - "Access Engineering paid $3,000" → records income with approval.
+   - "Create invoice for Acme Corp $5,000 due June 1" → creates a draft invoice with approval.
+3. Convert quotations or invoices to records:
+   - The user can paste a quotation as text OR upload a PDF (📎 button) → extract the details and create an invoice for approval.
+   - Upload a PDF receipt → extract vendor, amount, date and create an expense with approval.
+4. Help navigate the app and explain how features work.
+
+APP PAGES:
+- Dashboard (/dashboard): Key metrics overview — MRR, ARR, runway, burn rate, recent transactions
+- Transactions (/transactions): All income & expense entries; filter, search, tag recurrence
+- Revenue (/revenue): MRR/ARR trends, revenue breakdown, churn analytics
+- Expenses (/expenses): Expense list and category breakdown
+- Invoices (/invoices): Create and manage customer invoices; mark as paid
+- Projects (/projects): Billable project tracking, margins, client payments
+- Connections (/connections): Connect integrations — Stripe, QuickBooks, Plaid (bank), Shopify, PayPal, Gmail, Outlook
+- Advisor (/advisor): This AI advisor
+- Reports (/reports): Exportable financial reports
+- Settings (/settings): Profile, billing, team, AI model preference
+
+HOW TO CONNECT AN INTEGRATION:
+1. Go to Connections (/connections)
+2. Click "Connect" on the integration card → follow the OAuth authorization flow
+3. An initial 30-day sync runs automatically after authorization
+
+GUARDRAILS:
+- Only answer questions about finances, accounting, business metrics, or this application.
+- If a question is unrelated, respond: "I'm Finvio's financial advisor. I can only help with finance, accounting, and app questions. Is there something about your business finances I can help with?"
+- Never advise on tax evasion, fraud, or illegal activity. Decline politely and redirect.
 
 You have access to the following verified financial data for the company:
 
@@ -149,6 +183,13 @@ async function fetchContextForIntent(
       const projects = await getProjectSummary(orgId)
       return { projects, businessModel }
     }
+    case 'query_expenses': {
+      const expenses = await getExpenses(orgId, today)
+      return { ...expenses, businessModel }
+    }
+    case 'query_help': {
+      return { businessModel, today: new Date().toISOString().split('T')[0] }
+    }
     default: {
       // Generic: provide a snapshot
       const [{ mrr }, { cash }, { runway }, completeness] = await Promise.all([
@@ -163,44 +204,6 @@ async function fetchContextForIntent(
 }
 
 // ─── write intent extraction ─────────────────────────────────────────────────
-
-// z.preprocess handles null/undefined → fallback before Zod validates
-// This is needed because OpenAI JSON mode returns null for missing optional fields
-// and z.string().default() only triggers on undefined, not null
-function strWithDefault(fallback: string) {
-  return z.preprocess(v => (v == null || v === '') ? fallback : v, z.string().min(1))
-}
-function optionalStr() {
-  return z.preprocess(v => v == null ? undefined : v, z.string().optional())
-}
-
-const ExpenseSchema = z.object({
-  title:      strWithDefault('Expense'),
-  amount:     z.coerce.number().positive(),
-  category:   strWithDefault('Other Expense'),
-  date:       z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  recurrence: z.preprocess(
-    v => (v == null || !['monthly','quarterly','annual','one_time'].includes(String(v))) ? undefined : v,
-    z.enum(['monthly','quarterly','annual','one_time']).optional()
-  ),
-  notes: optionalStr(),
-})
-
-const InvoiceSchema = z.object({
-  customerName: z.string().min(1),
-  amount:       z.coerce.number().positive(),
-  dueDate:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  notes:        optionalStr(),
-})
-
-const IncomeSchema = z.object({
-  description:  strWithDefault('Payment received'),
-  amount:       z.coerce.number().positive(),
-  category:     strWithDefault('Other Income'),
-  date:         z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  source:       optionalStr(),
-  project_name: optionalStr(),
-})
 
 async function resolveProjectId(
   supabase: Awaited<ReturnType<typeof createClient>>,

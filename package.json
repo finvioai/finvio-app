@@ -14,6 +14,7 @@
     "@anthropic-ai/sdk": "^0.92.0",
     "@base-ui/react": "^1.4.1",
     "@huggingface/transformers": "^4.2.0",
+    "@lemonsqueezy/lemonsqueezy.js": "^4.0.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
     "@types/papaparse": "^5.5.2",
@@ -26,6 +27,7 @@
     "next-themes": "^0.4.6",
     "openai": "^6.35.0",
     "papaparse": "^5.5.3",
+    "pdf-parse": "^2.4.5",
     "plaid": "^42.2.0",
     "react": "19.2.4",
     "react-day-picker": "^9.14.0",
@@ -42,6 +44,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.1",
