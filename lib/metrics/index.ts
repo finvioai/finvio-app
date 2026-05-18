@@ -189,19 +189,26 @@ export async function getCashBalance(orgId: string): Promise<{ cash: number; war
   const supabase = await createClient()
   const warnings: string[] = []
 
-  // Primary: Plaid balance metadata
-  const { data: conn } = await supabase
+  // Primary: sum balance metadata from all active bank connections (Plaid, Mercury)
+  const { data: bankConns } = await supabase
     .from('connections')
-    .select('metadata')
+    .select('provider, metadata')
     .eq('org_id', orgId)
-    .eq('provider', 'plaid')
+    .in('provider', ['plaid', 'mercury', 'brex'])
     .eq('status', 'active')
-    .maybeSingle()
 
-  if (conn?.metadata) {
-    const meta = conn.metadata as Record<string, unknown>
-    if (typeof meta.balance === 'number') {
-      return { cash: meta.balance, warnings }
+  if (bankConns?.length) {
+    let bankTotal = 0
+    let hasBalance = false
+    for (const conn of bankConns) {
+      const meta = (conn.metadata ?? {}) as Record<string, unknown>
+      if (typeof meta.balance === 'number') {
+        bankTotal += meta.balance
+        hasBalance = true
+      }
+    }
+    if (hasBalance) {
+      return { cash: bankTotal, warnings }
     }
   }
 
@@ -425,7 +432,10 @@ export async function getDataCompleteness(orgId: string): Promise<DataCompletene
   const connMap = new Map((connections ?? []).map((c) => [c.provider, c.status]))
 
   const stripeConnected = connMap.get('stripe') === 'active'
-  const bankConnected = connMap.get('plaid') === 'active'
+  const plaidConnected = connMap.get('plaid') === 'active'
+  const mercuryConnected = connMap.get('mercury') === 'active'
+  const brexConnected = connMap.get('brex') === 'active'
+  const bankConnected = plaidConnected || mercuryConnected || brexConnected
   const shopifyConnected = connMap.get('shopify') === 'active'
   const paypalConnected = connMap.get('paypal') === 'active'
 
@@ -459,7 +469,7 @@ export async function getDataCompleteness(orgId: string): Promise<DataCompletene
   else if (hasExpenses) expenseCompleteness = 'medium'
 
   if (!stripeConnected) warnings.push('Connect Stripe for accurate revenue tracking.')
-  if (!bankConnected) warnings.push('Connect a bank account via Plaid for expense tracking.')
+  if (!bankConnected) warnings.push('Connect a bank account (Brex, Mercury, or Plaid) for expense tracking.')
   if (!hasRevenue) warnings.push('No revenue data found. Add income manually or connect an integration.')
 
   const score =
