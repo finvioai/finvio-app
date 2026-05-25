@@ -148,32 +148,32 @@ const terms: Term[] = [
 
 function TermAccordion({ term, tagline, formula, body, example, note }: Term) {
   return (
-    <details className="group rounded-xl border border-gray-200 bg-white overflow-hidden">
-      <summary className="flex cursor-pointer select-none items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50 transition-colors list-none">
+    <details className="group rounded-xl border border-hairline bg-white overflow-hidden">
+      <summary className="flex cursor-pointer select-none items-center justify-between gap-4 px-5 py-4 hover:bg-off-white transition-colors list-none">
         <div className="min-w-0">
-          <span className="text-sm font-semibold text-gray-900">{term}</span>
-          <span className="ml-2 text-sm text-gray-400">— {tagline}</span>
+          <span className="text-sm font-semibold text-navy">{term}</span>
+          <span className="ml-2 text-sm text-muted-ink/60">— {tagline}</span>
         </div>
-        <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180" />
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-ink/60 transition-transform group-open:rotate-180" />
       </summary>
 
-      <div className="border-t border-gray-100 px-5 py-4 space-y-3">
+      <div className="border-t border-hairline/70 px-5 py-4 space-y-3">
         {formula && (
-          <div className="rounded-md bg-gray-50 border border-gray-200 px-4 py-2.5">
-            <p className="text-xs font-mono text-gray-700">{formula}</p>
+          <div className="rounded-md bg-off-white border border-hairline px-4 py-2.5">
+            <p className="text-xs font-mono text-navy/80">{formula}</p>
           </div>
         )}
 
         <div className="space-y-1.5">
           {body.map((line, i) => (
-            <p key={i} className="text-sm text-gray-700 leading-relaxed">{line}</p>
+            <p key={i} className="text-sm text-navy/80 leading-relaxed">{line}</p>
           ))}
         </div>
 
         {example && (
-          <div className="rounded-md bg-blue-50 border border-blue-100 px-4 py-2.5">
-            <p className="text-xs font-semibold text-blue-800 mb-0.5">Example</p>
-            <p className="text-sm text-blue-700">{example}</p>
+          <div className="rounded-md bg-brand-tint border border-brand/15 px-4 py-2.5">
+            <p className="text-xs font-semibold text-navy mb-0.5">Example</p>
+            <p className="text-sm text-brand">{example}</p>
           </div>
         )}
 
@@ -192,10 +192,10 @@ export default function GlossaryPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-1">
-        <BookOpen className="h-6 w-6 text-blue-600" />
-        <h1 className="text-2xl font-bold text-gray-900">Metrics Glossary</h1>
+        <BookOpen className="h-6 w-6 text-brand" />
+        <h1 className="text-2xl font-bold text-navy">Metrics Glossary</h1>
       </div>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-muted-ink mb-6">
         Click any term to see how it is calculated.
       </p>
 

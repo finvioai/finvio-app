@@ -49,7 +49,7 @@ function DialogContent({
         className={cn(
           "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
           "max-h-[90vh] overflow-y-auto",
-          "rounded-xl border border-gray-200 bg-white shadow-xl",
+          "rounded-xl border border-hairline bg-white shadow-xl",
           "transition-all duration-200",
           "data-starting-style:opacity-0 data-starting-style:scale-95",
           "data-ending-style:opacity-0 data-ending-style:scale-95",
@@ -92,7 +92,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn("flex flex-row justify-end gap-2 px-6 py-4 border-t border-gray-100", className)}
+      className={cn("flex flex-row justify-end gap-2 px-6 py-4 border-t border-hairline/70", className)}
       {...props}
     />
   )
@@ -102,7 +102,7 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg font-semibold text-gray-900", className)}
+      className={cn("text-lg font-semibold text-navy", className)}
       {...props}
     />
   )
@@ -112,7 +112,7 @@ function DialogDescription({ className, ...props }: DialogPrimitive.Description.
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-gray-500", className)}
+      className={cn("text-sm text-muted-ink", className)}
       {...props}
     />
   )

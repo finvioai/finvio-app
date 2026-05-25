@@ -455,7 +455,7 @@ export function FloatingAdvisorButton() {
                   : 'bg-white/20 border border-white/20 cursor-not-allowed',
               )}
             >
-              <Check className={cn('h-7 w-7', (isWhisperMode || displayText) && !isTranscribing && !isLoadingModel ? 'text-blue-600' : 'text-white/40')} />
+              <Check className={cn('h-7 w-7', (isWhisperMode || displayText) && !isTranscribing && !isLoadingModel ? 'text-brand' : 'text-white/40')} />
             </button>
           </div>
         </div>
@@ -476,7 +476,7 @@ export function FloatingAdvisorButton() {
             ? 'bg-red-500 ring-4 ring-red-300 scale-110'
             : isTranscribing || isLoadingModel
               ? 'bg-indigo-600 scale-105'
-              : 'bg-blue-600 hover:bg-blue-700 active:scale-95',
+              : 'bg-brand hover:bg-navy active:scale-95',
         )}
       >
         {isRecording ? (

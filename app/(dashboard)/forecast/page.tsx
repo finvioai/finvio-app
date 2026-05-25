@@ -56,8 +56,8 @@ function Slider({
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
-        <span className="text-gray-700 font-medium">{label}</span>
-        <span className="font-bold text-blue-600">{format(value)}</span>
+        <span className="text-navy/80 font-medium">{label}</span>
+        <span className="font-bold text-brand">{format(value)}</span>
       </div>
       <input
         type="range"
@@ -68,7 +68,7 @@ function Slider({
         onChange={(e) => onChange(parseFloat(e.target.value))}
         className="w-full accent-blue-600"
       />
-      <div className="flex justify-between text-xs text-gray-400">
+      <div className="flex justify-between text-xs text-muted-ink/60">
         <span>{format(min)}</span>
         <span>{format(max)}</span>
       </div>
@@ -117,16 +117,16 @@ export default function ForecastPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Forecast</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <h1 className="text-2xl font-bold text-navy">Forecast</h1>
+        <p className="text-sm text-muted-ink mt-0.5">
           Project revenue, expenses, and cash based on growth assumptions
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Controls */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-6">
-          <h2 className="text-sm font-semibold text-gray-900">Assumptions</h2>
+        <div className="rounded-xl border border-hairline bg-white p-5 space-y-6">
+          <h2 className="text-sm font-semibold text-navy">Assumptions</h2>
 
           {isSaaS && (
             <Slider
@@ -141,9 +141,9 @@ export default function ForecastPage() {
           )}
 
           {!isSaaS && data && (
-            <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5">
-              <p className="text-xs text-blue-700 font-medium">Using historical revenue trend</p>
-              <p className="text-xs text-blue-600 mt-0.5">
+            <div className="rounded-lg bg-brand-tint border border-brand/15 px-3 py-2.5">
+              <p className="text-xs text-brand font-medium">Using historical revenue trend</p>
+              <p className="text-xs text-brand mt-0.5">
                 Projection based on your last 6 months of revenue.
               </p>
             </div>
@@ -160,26 +160,26 @@ export default function ForecastPage() {
           />
 
           {data && (
-            <div className="pt-4 border-t border-gray-100 space-y-3">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Baseline</p>
+            <div className="pt-4 border-t border-hairline/70 space-y-3">
+              <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Baseline</p>
               <div className="space-y-2">
                 {isSaaS ? (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Current MRR</span>
+                    <span className="text-muted-ink">Current MRR</span>
                     <span className="font-medium">{fmt(data.currentMRR)}</span>
                   </div>
                 ) : (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Avg monthly revenue</span>
+                    <span className="text-muted-ink">Avg monthly revenue</span>
                     <span className="font-medium">{fmt(data.avgMonthlyRevenue)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Monthly burn</span>
+                  <span className="text-muted-ink">Monthly burn</span>
                   <span className="font-medium">{fmt(data.currentBurnRate)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Cash balance</span>
+                  <span className="text-muted-ink">Cash balance</span>
                   <span className="font-medium">{fmt(data.currentCash)}</span>
                 </div>
               </div>
@@ -191,41 +191,41 @@ export default function ForecastPage() {
         <div className="lg:col-span-2 space-y-4">
           {!data && loading ? (
             <div className="flex h-32 items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              <Loader2 className="h-6 w-6 animate-spin text-brand" />
             </div>
           ) : (
             <>
               {/* Outcome cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="rounded-xl border border-hairline bg-white p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Zap className="h-4 w-4 text-yellow-500" />
-                    <p className="text-xs font-medium text-gray-500">Break-even</p>
+                    <p className="text-xs font-medium text-muted-ink">Break-even</p>
                   </div>
-                  <p className="text-lg font-bold text-gray-900">
+                  <p className="text-lg font-bold text-navy">
                     {breakEvenMonth ? monthLabel(breakEvenMonth.month) : 'Beyond forecast'}
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <div className="rounded-xl border border-hairline bg-white p-4">
                   <div className="flex items-center gap-2 mb-1">
-                    <TrendingUp className="h-4 w-4 text-blue-500" />
-                    <p className="text-xs font-medium text-gray-500">{revenueLabel}</p>
+                    <TrendingUp className="h-4 w-4 text-brand/80" />
+                    <p className="text-xs font-medium text-muted-ink">{revenueLabel}</p>
                   </div>
-                  <p className="text-lg font-bold text-gray-900">
+                  <p className="text-lg font-bold text-navy">
                     {lastMonth ? fmt(lastMonth.projectedRevenue ?? lastMonth.projectedMRR) : '—'}
                   </p>
                 </div>
 
                 <div className={cn(
                   'rounded-xl border p-4',
-                  cashRunsOut ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'
+                  cashRunsOut ? 'border-red-200 bg-red-50' : 'border-hairline bg-white'
                 )}>
                   <div className="flex items-center gap-2 mb-1">
                     <DollarSign className={cn('h-4 w-4', cashRunsOut ? 'text-red-500' : 'text-green-500')} />
-                    <p className="text-xs font-medium text-gray-500">Cash at end</p>
+                    <p className="text-xs font-medium text-muted-ink">Cash at end</p>
                   </div>
-                  <p className={cn('text-lg font-bold', cashRunsOut ? 'text-red-700' : 'text-gray-900')}>
+                  <p className={cn('text-lg font-bold', cashRunsOut ? 'text-red-700' : 'text-navy')}>
                     {lastMonth ? fmt(lastMonth.projectedCash) : '—'}
                   </p>
                   {cashRunsOut && (
@@ -237,13 +237,13 @@ export default function ForecastPage() {
               </div>
 
               {/* Chart */}
-              <div className="relative rounded-xl border border-gray-200 bg-white p-5">
+              <div className="relative rounded-xl border border-hairline bg-white p-5">
                 {loading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-xl z-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
+                    <Loader2 className="h-5 w-5 animate-spin text-brand/60" />
                   </div>
                 )}
-                <p className="text-xs text-gray-500 mb-4">Monthly revenue vs expenses</p>
+                <p className="text-xs text-muted-ink mb-4">Monthly revenue vs expenses</p>
                 <ResponsiveContainer width="100%" height={240}>
                   <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />

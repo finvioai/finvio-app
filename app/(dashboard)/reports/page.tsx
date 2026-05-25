@@ -51,16 +51,16 @@ function PnLRow({ item, prev, isTotal }: { item: PnLLineItem; prev?: PnLLineItem
   const change = prev !== undefined ? pctChange(item.amount, prev.amount) : undefined
   const improved = typeof change === 'string' && change !== '—' && parseFloat(change) > 0
   return (
-    <tr className={cn('border-b border-gray-50', isTotal && 'bg-gray-50 font-semibold')}>
-      <td className={cn('py-2.5 pr-4 text-sm', isTotal ? 'px-4 text-gray-900' : 'pl-8 text-gray-700')}>
+    <tr className={cn('border-b border-hairline/40', isTotal && 'bg-off-white font-semibold')}>
+      <td className={cn('py-2.5 pr-4 text-sm', isTotal ? 'px-4 text-navy' : 'pl-8 text-navy/80')}>
         {item.category}
       </td>
-      <td className="py-2.5 pr-4 text-sm text-right text-gray-900">{fmt(item.amount)}</td>
+      <td className="py-2.5 pr-4 text-sm text-right text-navy">{fmt(item.amount)}</td>
       <td className="py-2.5 pr-4 text-sm text-right">
         {change && change !== '—' ? (
           <span className={cn('text-xs', improved ? 'text-green-600' : 'text-red-600')}>{change}</span>
         ) : (
-          <span className="text-xs text-gray-400">{change ?? '—'}</span>
+          <span className="text-xs text-muted-ink/60">{change ?? '—'}</span>
         )}
       </td>
     </tr>
@@ -129,15 +129,15 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Profit &amp; loss statement by month</p>
+          <h1 className="text-2xl font-bold text-navy">Reports</h1>
+          <p className="text-sm text-muted-ink mt-0.5">Profit &amp; loss statement by month</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={goBack} className="rounded-md border border-gray-200 p-1.5 hover:bg-gray-50">
+          <button onClick={goBack} className="rounded-md border border-hairline p-1.5 hover:bg-off-white">
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm font-medium text-gray-900 w-36 text-center">{displayMonth(month)}</span>
-          <button onClick={goForward} disabled={!canGoForward} className="rounded-md border border-gray-200 p-1.5 hover:bg-gray-50 disabled:opacity-40">
+          <span className="text-sm font-medium text-navy w-36 text-center">{displayMonth(month)}</span>
+          <button onClick={goForward} disabled={!canGoForward} className="rounded-md border border-hairline p-1.5 hover:bg-off-white disabled:opacity-40">
             <ChevronRight className="h-4 w-4" />
           </button>
           {current && (
@@ -150,31 +150,31 @@ export default function ReportsPage() {
 
       {loading ? (
         <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <Loader2 className="h-6 w-6 animate-spin text-brand" />
         </div>
       ) : !current ? (
-        <p className="text-center text-sm text-gray-500">Failed to load report.</p>
+        <p className="text-center text-sm text-muted-ink">Failed to load report.</p>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* P&L Table */}
-          <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="lg:col-span-2 rounded-xl border border-hairline bg-white overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500">Category</th>
-                  <th className="text-right py-3 pr-4 text-xs font-medium text-gray-500">Amount</th>
-                  <th className="text-right py-3 pr-4 text-xs font-medium text-gray-500">vs Last Month</th>
+                <tr className="border-b border-hairline/70 bg-off-white">
+                  <th className="text-left py-3 px-4 text-xs font-medium text-muted-ink">Category</th>
+                  <th className="text-right py-3 pr-4 text-xs font-medium text-muted-ink">Amount</th>
+                  <th className="text-right py-3 pr-4 text-xs font-medium text-muted-ink">vs Last Month</th>
                 </tr>
               </thead>
               <tbody>
                 {/* Revenue */}
                 <tr>
-                  <td colSpan={3} className="pt-3 pb-1 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  <td colSpan={3} className="pt-3 pb-1 px-4 text-xs font-semibold text-muted-ink/60 uppercase tracking-wide">
                     Revenue
                   </td>
                 </tr>
                 {current.revenue.length === 0 ? (
-                  <tr><td colSpan={3} className="py-3 pl-8 text-sm text-gray-400">No revenue this month</td></tr>
+                  <tr><td colSpan={3} className="py-3 pl-8 text-sm text-muted-ink/60">No revenue this month</td></tr>
                 ) : (
                   current.revenue.map((r) => {
                     const prev = previous?.revenue.find((p) => p.category === r.category)
@@ -189,12 +189,12 @@ export default function ReportsPage() {
 
                 {/* Expenses */}
                 <tr>
-                  <td colSpan={3} className="pt-4 pb-1 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  <td colSpan={3} className="pt-4 pb-1 px-4 text-xs font-semibold text-muted-ink/60 uppercase tracking-wide">
                     Expenses
                   </td>
                 </tr>
                 {current.expenses.length === 0 ? (
-                  <tr><td colSpan={3} className="py-3 pl-8 text-sm text-gray-400">No expenses this month</td></tr>
+                  <tr><td colSpan={3} className="py-3 pl-8 text-sm text-muted-ink/60">No expenses this month</td></tr>
                 ) : (
                   current.expenses.map((e) => {
                     const prev = previous?.expenses.find((p) => p.category === e.category)
@@ -208,8 +208,8 @@ export default function ReportsPage() {
                 />
 
                 {/* Net Income */}
-                <tr className="bg-blue-50">
-                  <td className="py-3 px-4 text-sm font-bold text-gray-900">Net Income</td>
+                <tr className="bg-brand-tint">
+                  <td className="py-3 px-4 text-sm font-bold text-navy">Net Income</td>
                   <td className={cn('py-3 pr-4 text-sm font-bold text-right', current.netIncome >= 0 ? 'text-green-600' : 'text-red-600')}>
                     {fmt(current.netIncome)}
                   </td>
@@ -226,10 +226,10 @@ export default function ReportsPage() {
           </div>
 
           {/* Expense breakdown */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Expense Breakdown</h3>
+          <div className="rounded-xl border border-hairline bg-white p-5">
+            <h3 className="text-sm font-semibold text-navy mb-4">Expense Breakdown</h3>
             {pieData.length === 0 ? (
-              <p className="text-sm text-gray-400 py-10 text-center">No expenses this month</p>
+              <p className="text-sm text-muted-ink/60 py-10 text-center">No expenses this month</p>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
@@ -247,17 +247,17 @@ export default function ReportsPage() {
               </ResponsiveContainer>
             )}
 
-            <div className="mt-4 space-y-2 pt-4 border-t border-gray-100">
+            <div className="mt-4 space-y-2 pt-4 border-t border-hairline/70">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Revenue</span>
+                <span className="text-muted-ink">Revenue</span>
                 <span className="font-medium text-green-600">{fmt(current.totalRevenue)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Expenses</span>
+                <span className="text-muted-ink">Expenses</span>
                 <span className="font-medium text-red-600">{fmt(current.totalExpenses)}</span>
               </div>
-              <div className="flex justify-between text-sm border-t border-gray-100 pt-2">
-                <span className="font-semibold text-gray-900">Net</span>
+              <div className="flex justify-between text-sm border-t border-hairline/70 pt-2">
+                <span className="font-semibold text-navy">Net</span>
                 <span className={cn('font-bold', current.netIncome >= 0 ? 'text-green-600' : 'text-red-600')}>
                   {fmt(current.netIncome)}
                 </span>

@@ -174,8 +174,8 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Review, categorize, and add transactions.</p>
+          <h1 className="text-2xl font-bold text-navy">Transactions</h1>
+          <p className="text-sm text-muted-ink mt-0.5">Review, categorize, and add transactions.</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -201,17 +201,17 @@ export default function TransactionsPage() {
       {/* Summary cards */}
       {transactions.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <p className="text-xs text-gray-500">Income</p>
+          <div className="rounded-lg border border-hairline bg-white p-4">
+            <p className="text-xs text-muted-ink">Income</p>
             <p className="text-lg font-bold text-green-600">{fmt(totalIncome)}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <p className="text-xs text-gray-500">Expenses</p>
+          <div className="rounded-lg border border-hairline bg-white p-4">
+            <p className="text-xs text-muted-ink">Expenses</p>
             <p className="text-lg font-bold text-red-600">{fmt(totalExpenses)}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4 col-span-2 sm:col-span-1">
-            <p className="text-xs text-gray-500">Net</p>
-            <p className={cn('text-lg font-bold', totalIncome - totalExpenses >= 0 ? 'text-gray-900' : 'text-red-600')}>
+          <div className="rounded-lg border border-hairline bg-white p-4 col-span-2 sm:col-span-1">
+            <p className="text-xs text-muted-ink">Net</p>
+            <p className={cn('text-lg font-bold', totalIncome - totalExpenses >= 0 ? 'text-navy' : 'text-red-600')}>
               {fmt(totalIncome - totalExpenses)}
             </p>
           </div>
@@ -241,19 +241,19 @@ export default function TransactionsPage() {
       )}
 
       {/* Unified transactions table */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-900">
+      <div className="rounded-xl border border-hairline bg-white overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-hairline px-4 py-3">
+          <h2 className="text-sm font-semibold text-navy">
             All Transactions {transactions.length > 0 && `(${transactions.length})`}
           </h2>
-          <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
+          <div className="flex gap-1 rounded-lg bg-off-white p-1">
             {(['all', 'income', 'expense'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setTypeFilter(f)}
                 className={cn(
                   'rounded-md px-3 py-1 text-xs font-medium transition-colors capitalize',
-                  typeFilter === f ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-700'
+                  typeFilter === f ? 'bg-white text-navy shadow-xs' : 'text-muted-ink hover:text-navy/80'
                 )}
               >
                 {f}
@@ -264,15 +264,15 @@ export default function TransactionsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+            <Loader2 className="h-5 w-5 animate-spin text-muted-ink/60" />
           </div>
         ) : transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-              <Plus className="h-5 w-5 text-gray-400" />
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-off-white">
+              <Plus className="h-5 w-5 text-muted-ink/60" />
             </div>
-            <p className="text-sm font-medium text-gray-900">No transactions yet</p>
-            <p className="mt-1 text-xs text-gray-500 max-w-xs">
+            <p className="text-sm font-medium text-navy">No transactions yet</p>
+            <p className="mt-1 text-xs text-muted-ink max-w-xs">
               Add expenses or income manually, or connect an integration to start seeing data.
             </p>
             <div className="mt-4 flex gap-2">
@@ -284,16 +284,16 @@ export default function TransactionsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm [table-layout:fixed]">
               <thead>
-                <tr className="border-b border-gray-100 text-left">
-                  <th className="w-[90px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
-                  <th className="w-[170px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
-                  <th className="w-[140px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
-                  <th className="w-[110px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Recurrence</th>
-                  <th className="w-[130px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Project / Invoice</th>
-                  <th className="hidden xl:table-cell w-[80px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
-                  <th className="hidden xl:table-cell w-[70px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Receipt</th>
-                  <th className="w-[96px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Amount</th>
-                  <th className="w-[56px] px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide"></th>
+                <tr className="border-b border-hairline/70 text-left">
+                  <th className="w-[90px] px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Date</th>
+                  <th className="w-[170px] px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Description</th>
+                  <th className="w-[140px] px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Category</th>
+                  <th className="w-[110px] px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Recurrence</th>
+                  <th className="w-[130px] px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Project / Invoice</th>
+                  <th className="hidden xl:table-cell w-[80px] px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Source</th>
+                  <th className="hidden xl:table-cell w-[70px] px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Receipt</th>
+                  <th className="w-[96px] px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide text-right">Amount</th>
+                  <th className="w-[56px] px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -440,21 +440,21 @@ function TransactionRow({
 
   return (
     <tr className={cn(
-      'hover:bg-gray-50 transition-colors',
+      'hover:bg-off-white transition-colors',
       needsReview && 'bg-amber-50/40',
       isPotentialDuplicate && 'bg-orange-50/40'
     )}>
-      <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(txn.date)}</td>
+      <td className="px-4 py-3 text-muted-ink text-xs whitespace-nowrap">{fmtDate(txn.date)}</td>
       <td className="px-4 py-3 max-w-0">
         <div className="relative group/desc">
-          <p className="font-medium text-gray-900 truncate">{txn.description}</p>
+          <p className="font-medium text-navy truncate">{txn.description}</p>
           {txn.description && (
             <div className="pointer-events-none absolute z-50 left-0 top-full mt-1 hidden group-hover/desc:block bg-gray-900 text-white text-xs rounded px-2 py-1.5 whitespace-normal max-w-xs shadow-lg">
               {txn.description}
             </div>
           )}
         </div>
-        {txn.vendor && <p className="text-xs text-gray-500 truncate">{txn.vendor}</p>}
+        {txn.vendor && <p className="text-xs text-muted-ink truncate">{txn.vendor}</p>}
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-1">
@@ -465,7 +465,7 @@ function TransactionRow({
             value={txn.category ?? ''}
             onChange={handleCategory}
             disabled={saving}
-            className="h-7 w-full rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            className="h-7 w-full rounded border border-hairline bg-white px-2 text-xs text-navy/80 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
           >
             {!txn.category && <option value="">Uncategorized</option>}
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -477,7 +477,7 @@ function TransactionRow({
           value={txn.recurrence ?? ''}
           onChange={handleRecurrence}
           disabled={saving}
-          className="h-7 w-full rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+          className="h-7 w-full rounded border border-hairline bg-white px-2 text-xs text-navy/80 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
         >
           <option value="">Not set</option>
           {RECURRENCE_OPTIONS.map((o) => (
@@ -491,7 +491,7 @@ function TransactionRow({
             value={linkedValue}
             onChange={handleLinkedEntity}
             disabled={saving}
-            className="h-7 w-full rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            className="h-7 w-full rounded border border-hairline bg-white px-2 text-xs text-navy/80 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
           >
             <option value="">—</option>
             {activeProjects.length > 0 && (
@@ -512,13 +512,13 @@ function TransactionRow({
             )}
           </select>
         ) : linkedValue ? (
-          <span className="text-xs text-gray-600">
+          <span className="text-xs text-muted-ink">
             {linkedValue.startsWith('project:')
               ? projects.find((p) => p.id === txn.project_id)?.name ?? '—'
               : invoices.find((inv) => inv.id === txn.invoice_id)?.invoice_number ?? '—'}
           </span>
         ) : (
-          <span className="text-xs text-gray-400">—</span>
+          <span className="text-xs text-muted-ink/60">—</span>
         )}
       </td>
       <td className="hidden xl:table-cell px-4 py-3">
@@ -532,13 +532,13 @@ function TransactionRow({
             href={txn.receipt_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            className="inline-flex items-center gap-1 text-xs text-brand hover:text-navy hover:underline"
           >
             <Paperclip className="h-3.5 w-3.5" />
             View
           </a>
         ) : (
-          <span className="text-xs text-gray-400">—</span>
+          <span className="text-xs text-muted-ink/60">—</span>
         )}
       </td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -561,7 +561,7 @@ function TransactionRow({
               onClick={handleMarkReviewed}
               disabled={saving}
               title="Mark as reviewed"
-              className="rounded p-1 text-gray-400 hover:bg-green-50 hover:text-green-600 disabled:opacity-40 transition-colors"
+              className="rounded p-1 text-muted-ink/60 hover:bg-green-50 hover:text-green-600 disabled:opacity-40 transition-colors"
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
             </button>
@@ -571,7 +571,7 @@ function TransactionRow({
             <button
               onClick={() => onDelete(txn)}
               title="Delete transaction"
-              className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+              className="rounded p-1 text-muted-ink/60 hover:bg-red-50 hover:text-red-600 transition-colors"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

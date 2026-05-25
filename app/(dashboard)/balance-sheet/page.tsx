@@ -16,28 +16,28 @@ function Row({ label, value, bold, indent, positive, note }: {
 }) {
   const display = value === null ? '—' : fmt(value)
   const valueColor = value === null
-    ? 'text-gray-400'
+    ? 'text-muted-ink/60'
     : positive === true
       ? 'text-green-700'
       : positive === false
         ? 'text-red-600'
-        : 'text-gray-900'
+        : 'text-navy'
 
   return (
-    <div className={`flex items-center justify-between py-2 ${indent ? 'pl-6' : ''} ${bold ? 'border-t border-gray-200 font-semibold mt-1' : ''}`}>
+    <div className={`flex items-center justify-between py-2 ${indent ? 'pl-6' : ''} ${bold ? 'border-t border-hairline font-semibold mt-1' : ''}`}>
       <div>
-        <span className={`text-sm ${bold ? 'text-gray-900' : 'text-gray-600'} ${indent ? 'text-gray-700' : ''}`}>{label}</span>
-        {note && <p className="text-xs text-gray-400 mt-0.5">{note}</p>}
+        <span className={`text-sm ${bold ? 'text-navy' : 'text-muted-ink'} ${indent ? 'text-navy/80' : ''}`}>{label}</span>
+        {note && <p className="text-xs text-muted-ink/60 mt-0.5">{note}</p>}
       </div>
-      <span className={`text-sm tabular-nums ${bold ? 'text-gray-900 font-semibold' : valueColor}`}>{display}</span>
+      <span className={`text-sm tabular-nums ${bold ? 'text-navy font-semibold' : valueColor}`}>{display}</span>
     </div>
   )
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6">
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{title}</h2>
+    <div className="rounded-xl border border-hairline bg-white p-6">
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-ink/60 mb-3">{title}</h2>
       <div className="divide-y divide-gray-50">{children}</div>
     </div>
   )
@@ -146,11 +146,11 @@ export default async function BalanceSheetPage() {
     (recurringQuarterlyResult.data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0) / 3
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-off-white">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Balance Sheet</h1>
-          <p className="text-sm text-gray-500 mt-1">As of {asOfLabel}</p>
+          <h1 className="text-2xl font-bold text-navy">Balance Sheet</h1>
+          <p className="text-sm text-muted-ink mt-1">As of {asOfLabel}</p>
         </div>
 
         <div className="space-y-4">
@@ -158,7 +158,7 @@ export default async function BalanceSheetPage() {
           {/* Assets */}
           <Section title="Assets">
             <div>
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide pb-1">Current Assets</p>
+              <p className="text-xs font-medium text-muted-ink/60 uppercase tracking-wide pb-1">Current Assets</p>
               <Row
                 label="Cash & Equivalents"
                 value={cashPosition}
@@ -180,7 +180,7 @@ export default async function BalanceSheetPage() {
           {/* Liabilities */}
           <Section title="Liabilities">
             <div>
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide pb-1">Current Liabilities</p>
+              <p className="text-xs font-medium text-muted-ink/60 uppercase tracking-wide pb-1">Current Liabilities</p>
               <Row
                 label="Accounts Payable / Debt"
                 value={null}
@@ -205,10 +205,10 @@ export default async function BalanceSheetPage() {
           </Section>
 
           {/* Balance check */}
-          <div className="rounded-xl border border-gray-200 bg-white px-6 py-4 space-y-1">
+          <div className="rounded-xl border border-hairline bg-white px-6 py-4 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-900">Total Liabilities + Equity</span>
-              <span className={`text-sm font-semibold tabular-nums ${(totalLiabilities + totalEquity) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+              <span className="text-sm font-semibold text-navy">Total Liabilities + Equity</span>
+              <span className={`text-sm font-semibold tabular-nums ${(totalLiabilities + totalEquity) >= 0 ? 'text-navy' : 'text-red-600'}`}>
                 {fmt(totalLiabilities + totalEquity)}
               </span>
             </div>
@@ -223,19 +223,19 @@ export default async function BalanceSheetPage() {
 
           {/* Monthly burn rate — informational, not a balance sheet liability */}
           {monthlyBurnRate > 0 && (
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-6 py-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">Operating Metrics</p>
+            <div className="rounded-xl border border-hairline/70 bg-off-white px-6 py-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-ink/60 mb-2">Operating Metrics</p>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-sm text-gray-700">Monthly Burn Rate</span>
-                  <p className="text-xs text-gray-400 mt-0.5">Recurring expenses normalised to one month — not a balance sheet liability</p>
+                  <span className="text-sm text-navy/80">Monthly Burn Rate</span>
+                  <p className="text-xs text-muted-ink/60 mt-0.5">Recurring expenses normalised to one month — not a balance sheet liability</p>
                 </div>
-                <span className="text-sm tabular-nums text-gray-900">{fmt(monthlyBurnRate)}/mo</span>
+                <span className="text-sm tabular-nums text-navy">{fmt(monthlyBurnRate)}/mo</span>
               </div>
             </div>
           )}
 
-          <p className="text-xs text-gray-400 text-center pb-2">
+          <p className="text-xs text-muted-ink/60 text-center pb-2">
             Cash basis: income and expenses from recorded transactions only. Accounts Receivable = sent &amp; overdue invoices.
             Soft-deleted transactions are excluded. This is a simplified balance sheet — not a GAAP audit.
           </p>

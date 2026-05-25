@@ -59,7 +59,7 @@ export default function LoginPage() {
 
   if (magicLinkSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-off-white">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -83,18 +83,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-off-white">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-8 h-8 bg-brand/15 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <span className="text-xl font-bold text-gray-900">Finvio</span>
+            <span className="text-xl font-extrabold tracking-tighter text-navy">
+              FINVIO<span className="text-brand">.ai</span>
+            </span>
           </div>
-          <p className="text-sm text-gray-500">AI-powered financial intelligence</p>
+          <p className="text-sm text-muted-ink">AI-powered financial intelligence</p>
         </div>
 
         <Card>
@@ -166,9 +168,9 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <p className="text-center text-sm text-gray-600">
+            <p className="text-center text-sm text-muted-ink">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/signup" className="font-medium text-brand hover:text-navy">
                 Sign up
               </Link>
             </p>

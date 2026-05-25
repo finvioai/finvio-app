@@ -226,11 +226,11 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 rounded-md border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors w-full"
+                className="flex items-center gap-2 rounded-md border border-dashed border-hairline px-3 py-2 text-sm text-muted-ink hover:border-gray-400 hover:text-navy/80 transition-colors w-full"
               >
                 <Paperclip className="h-4 w-4 shrink-0" />
                 {receiptFile ? (
-                  <span className="truncate font-medium text-gray-700">{receiptFile.name}</span>
+                  <span className="truncate font-medium text-navy/80">{receiptFile.name}</span>
                 ) : (
                   <span>Attach receipt or bill (optional)</span>
                 )}
@@ -239,7 +239,7 @@ export function AddExpenseModal({ open, onOpenChange, onSuccess }: AddExpenseMod
                 <button
                   type="button"
                   onClick={() => { setReceiptFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
-                  className="text-xs text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                  className="text-xs text-muted-ink/60 hover:text-red-500 transition-colors shrink-0"
                 >
                   Remove
                 </button>

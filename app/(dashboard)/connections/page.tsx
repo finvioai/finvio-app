@@ -43,9 +43,9 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
       <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="rounded-md p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-hairline/70">
+          <h3 className="text-base font-semibold text-navy">{title}</h3>
+          <button onClick={onClose} className="rounded-md p-1 text-muted-ink/60 hover:text-muted-ink hover:bg-off-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -58,14 +58,14 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function FieldInput({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      {hint && <p className="text-xs text-gray-400 mb-1.5">{hint}</p>}
+      <label className="block text-sm font-medium text-navy/80 mb-1">{label}</label>
+      {hint && <p className="text-xs text-muted-ink/60 mb-1.5">{hint}</p>}
       {children}
     </div>
   )
 }
 
-const inputCls = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+const inputCls = 'w-full rounded-lg border border-hairline px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
 // ─── Provider Card ────────────────────────────────────────────────────────────
 
@@ -109,22 +109,22 @@ function ProviderCard({
   return (
     <div className={cn('rounded-xl border bg-white p-5 space-y-4 transition-opacity', provider.comingSoon && 'opacity-60')}>
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-xl shrink-0">{provider.logo}</div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-off-white text-xl shrink-0">{provider.logo}</div>
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-semibold text-gray-900">{provider.name}</h3>
-            {provider.comingSoon && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Coming Soon</span>}
+            <h3 className="text-sm font-semibold text-navy">{provider.name}</h3>
+            {provider.comingSoon && <span className="rounded-full bg-off-white px-2 py-0.5 text-xs font-medium text-muted-ink">Coming Soon</span>}
             {isActive && <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"><CheckCircle2 className="h-3 w-3" /> Connected</span>}
-            {isSetup && <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Credentials saved</span>}
+            {isSetup && <span className="inline-flex items-center gap-1 rounded-full bg-brand-tint px-2 py-0.5 text-xs font-medium text-brand">Credentials saved</span>}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">{provider.description}</p>
+          <p className="text-xs text-muted-ink mt-0.5">{provider.description}</p>
         </div>
       </div>
 
       {isActive && connection && (
-        <div className="rounded-lg bg-gray-50 px-3 py-2 space-y-0.5">
-          {connection.account_name && <p className="text-xs text-gray-600 font-medium">{connection.account_name}</p>}
-          <p className="text-xs text-gray-400">Last synced: {connection.last_synced_at ? fmtDate(connection.last_synced_at) : 'Never'}</p>
+        <div className="rounded-lg bg-off-white px-3 py-2 space-y-0.5">
+          {connection.account_name && <p className="text-xs text-muted-ink font-medium">{connection.account_name}</p>}
+          <p className="text-xs text-muted-ink/60">Last synced: {connection.last_synced_at ? fmtDate(connection.last_synced_at) : 'Never'}</p>
         </div>
       )}
 
@@ -482,8 +482,8 @@ export default function ConnectionsPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Connections</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Connect your financial data sources to sync transactions automatically</p>
+        <h1 className="text-2xl font-bold text-navy">Connections</h1>
+        <p className="text-sm text-muted-ink mt-0.5">Connect your financial data sources to sync transactions automatically</p>
       </div>
 
       {pageSuccess && (
@@ -500,7 +500,7 @@ export default function ConnectionsPage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-ink/60" /></div>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
@@ -509,7 +509,7 @@ export default function ConnectionsPage() {
                 onSync={handleSync} onDisconnect={handleDisconnect} onConnect={handleConnect} />
             ))}
           </div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Coming Soon</h2>
+          <h2 className="text-sm font-semibold text-muted-ink uppercase tracking-wide mb-4">Coming Soon</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {comingSoon.map((provider) => (
               <ProviderCard key={provider.id} provider={provider} connection={getConnection(provider.id)}
@@ -522,7 +522,7 @@ export default function ConnectionsPage() {
       {/* Mercury Modal */}
       {modal === 'mercury' && (
         <Modal title="Connect Mercury" onClose={closeModal}>
-          <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800 space-y-1">
+          <div className="rounded-lg bg-brand-tint border border-brand/20 px-3 py-2.5 text-xs text-navy space-y-1">
             <p className="font-medium">How to get your API token:</p>
             <p>1. Log in to <strong>mercury.com</strong> → click your name → <strong>Settings</strong></p>
             <p>2. Go to the <strong>API Tokens</strong> tab</p>
@@ -542,14 +542,14 @@ export default function ConnectionsPage() {
             />
           </FieldInput>
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700">Environment</label>
-            <div className="flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+            <label className="text-sm font-medium text-navy/80">Environment</label>
+            <div className="flex rounded-lg border border-hairline overflow-hidden text-sm">
               <button onClick={() => setMercurySandbox(false)}
-                className={cn('px-3 py-1.5', !mercurySandbox ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50')}>
+                className={cn('px-3 py-1.5', !mercurySandbox ? 'bg-brand text-white' : 'bg-white text-muted-ink hover:bg-off-white')}>
                 Production
               </button>
               <button onClick={() => setMercurySandbox(true)}
-                className={cn('px-3 py-1.5 border-l border-gray-300', mercurySandbox ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50')}>
+                className={cn('px-3 py-1.5 border-l border-hairline', mercurySandbox ? 'bg-brand text-white' : 'bg-white text-muted-ink hover:bg-off-white')}>
                 Sandbox
               </button>
             </div>
@@ -598,11 +598,11 @@ export default function ConnectionsPage() {
       {/* Shopify Modal */}
       {modal === 'shopify' && (
         <Modal title="Connect Shopify" onClose={closeModal}>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-ink">
             Enter your store name and you&apos;ll be taken to Shopify to authorize access. No API tokens required.
           </p>
           <FieldInput label="Store domain" hint="Just the store name — we'll add .myshopify.com">
-            <div className="flex rounded-lg border border-gray-300 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+            <div className="flex rounded-lg border border-hairline overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
               <input
                 type="text"
                 value={shopDomain}
@@ -613,7 +613,7 @@ export default function ConnectionsPage() {
                 autoComplete="off"
                 autoFocus
               />
-              <span className="flex items-center px-3 bg-gray-50 text-xs text-gray-400 border-l border-gray-300 whitespace-nowrap">
+              <span className="flex items-center px-3 bg-off-white text-xs text-muted-ink/60 border-l border-hairline whitespace-nowrap">
                 .myshopify.com
               </span>
             </div>
@@ -632,7 +632,7 @@ export default function ConnectionsPage() {
       {/* PayPal Modal */}
       {modal === 'paypal' && (
         <Modal title="Connect PayPal" onClose={closeModal}>
-          <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800 space-y-1">
+          <div className="rounded-lg bg-brand-tint border border-brand/20 px-3 py-2.5 text-xs text-navy space-y-1">
             <p className="font-medium">How to get your credentials:</p>
             <p>1. Go to developer.paypal.com → My Apps & Credentials</p>
             <p>2. Create a REST API app (or use the default one)</p>
@@ -647,14 +647,14 @@ export default function ConnectionsPage() {
               placeholder="Secret…" className={cn(inputCls, 'font-mono')} autoComplete="off" />
           </FieldInput>
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700">Environment</label>
-            <div className="flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+            <label className="text-sm font-medium text-navy/80">Environment</label>
+            <div className="flex rounded-lg border border-hairline overflow-hidden text-sm">
               <button onClick={() => setPaypalSandbox(true)}
-                className={cn('px-3 py-1.5', paypalSandbox ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50')}>
+                className={cn('px-3 py-1.5', paypalSandbox ? 'bg-brand text-white' : 'bg-white text-muted-ink hover:bg-off-white')}>
                 Sandbox
               </button>
               <button onClick={() => setPaypalSandbox(false)}
-                className={cn('px-3 py-1.5 border-l border-gray-300', !paypalSandbox ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50')}>
+                className={cn('px-3 py-1.5 border-l border-hairline', !paypalSandbox ? 'bg-brand text-white' : 'bg-white text-muted-ink hover:bg-off-white')}>
                 Live
               </button>
             </div>
@@ -672,24 +672,24 @@ export default function ConnectionsPage() {
       {/* Disconnect Confirmation Modal */}
       {disconnectTarget && (
         <Modal title={`Disconnect ${disconnectTarget.label}?`} onClose={() => !disconnecting && setDisconnectTarget(null)}>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-ink">
             What should happen to the transactions imported from <strong>{disconnectTarget.label}</strong>?
           </p>
           <div className="space-y-3">
             <label className="flex items-start gap-3 cursor-pointer">
               <input type="radio" name="removeData" checked={!removeData} onChange={() => setRemoveData(false)}
-                className="mt-0.5 h-4 w-4 text-blue-600" />
+                className="mt-0.5 h-4 w-4 text-brand" />
               <div>
-                <span className="text-sm font-medium text-gray-900">Keep imported data</span>
-                <p className="text-xs text-gray-500 mt-0.5">Preserves your financial history — recommended for reporting continuity</p>
+                <span className="text-sm font-medium text-navy">Keep imported data</span>
+                <p className="text-xs text-muted-ink mt-0.5">Preserves your financial history — recommended for reporting continuity</p>
               </div>
             </label>
             <label className="flex items-start gap-3 cursor-pointer">
               <input type="radio" name="removeData" checked={removeData} onChange={() => setRemoveData(true)}
                 className="mt-0.5 h-4 w-4 text-red-600" />
               <div>
-                <span className="text-sm font-medium text-gray-900">Remove imported data</span>
-                <p className="text-xs text-gray-500 mt-0.5">Deletes all transactions synced from {disconnectTarget.label} — cannot be undone</p>
+                <span className="text-sm font-medium text-navy">Remove imported data</span>
+                <p className="text-xs text-muted-ink mt-0.5">Deletes all transactions synced from {disconnectTarget.label} — cannot be undone</p>
               </div>
             </label>
           </div>
@@ -706,7 +706,7 @@ export default function ConnectionsPage() {
       {/* Plaid Modal */}
       {modal === 'plaid' && (
         <Modal title="Connect Plaid (Bank)" onClose={closeModal}>
-          <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-800 space-y-1">
+          <div className="rounded-lg bg-brand-tint border border-brand/20 px-3 py-2.5 text-xs text-navy space-y-1">
             <p className="font-medium">How to get your credentials:</p>
             <p>1. Sign up free at dashboard.plaid.com</p>
             <p>2. Go to Team Settings → Keys</p>
