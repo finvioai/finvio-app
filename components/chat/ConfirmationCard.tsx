@@ -22,7 +22,7 @@ function formatCurrency(n: number) {
 }
 
 const selectCls =
-  'h-7 flex-1 rounded border border-gray-200 bg-white px-2 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500'
+  'h-7 flex-1 rounded border border-hairline bg-white px-2 text-xs text-navy/80 focus:outline-none focus:ring-1 focus:ring-blue-500'
 
 function ProjectPicker({
   selectedId,
@@ -44,7 +44,7 @@ function ProjectPicker({
 
   return (
     <div className="flex items-center gap-2">
-      <FolderOpen className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+      <FolderOpen className="h-3.5 w-3.5 text-muted-ink/60 shrink-0" />
       <select
         value={selectedId}
         onChange={(e) => {
@@ -94,23 +94,23 @@ function ActionDetails({
           <span className="text-sm font-semibold uppercase tracking-wide">New Expense</span>
         </div>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mt-3 items-center">
-          <span className="text-gray-500">Description</span><span className="font-medium text-gray-900">{p.title}</span>
-          <span className="text-gray-500">Amount</span><span className="font-semibold text-red-600">{formatCurrency(p.amount)}</span>
-          <span className="text-gray-500">Category</span>
+          <span className="text-muted-ink">Description</span><span className="font-medium text-navy">{p.title}</span>
+          <span className="text-muted-ink">Amount</span><span className="font-semibold text-red-600">{formatCurrency(p.amount)}</span>
+          <span className="text-muted-ink">Category</span>
           <select value={category} onChange={(e) => onCategoryChange(e.target.value)} className={selectCls}>
             {EXPENSE_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-          <span className="text-gray-500">Recurrence</span>
+          <span className="text-muted-ink">Recurrence</span>
           <select value={recurrence} onChange={(e) => onRecurrenceChange(e.target.value)} className={selectCls}>
             <option value="">Not specified</option>
             {RECURRENCE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <span className="text-gray-500">Date</span><span className="font-medium text-gray-900">{p.date}</span>
-          {p.notes && <><span className="text-gray-500">Notes</span><span className="text-gray-900">{p.notes}</span></>}
+          <span className="text-muted-ink">Date</span><span className="font-medium text-navy">{p.date}</span>
+          {p.notes && <><span className="text-muted-ink">Notes</span><span className="text-navy">{p.notes}</span></>}
         </div>
       </div>
     )
@@ -120,15 +120,15 @@ function ActionDetails({
     const p = action.params as CreateInvoiceParams
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-blue-600">
+        <div className="flex items-center gap-2 text-brand">
           <FileText className="h-4 w-4" />
           <span className="text-sm font-semibold uppercase tracking-wide">New Invoice</span>
         </div>
         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm mt-3">
-          <span className="text-gray-500">Customer</span><span className="font-medium text-gray-900">{p.customerName}</span>
-          <span className="text-gray-500">Amount</span><span className="font-semibold text-blue-600">{formatCurrency(p.amount)}</span>
-          <span className="text-gray-500">Due Date</span><span className="font-medium text-gray-900">{p.dueDate}</span>
-          {p.notes && <><span className="text-gray-500">Notes</span><span className="text-gray-900">{p.notes}</span></>}
+          <span className="text-muted-ink">Customer</span><span className="font-medium text-navy">{p.customerName}</span>
+          <span className="text-muted-ink">Amount</span><span className="font-semibold text-brand">{formatCurrency(p.amount)}</span>
+          <span className="text-muted-ink">Due Date</span><span className="font-medium text-navy">{p.dueDate}</span>
+          {p.notes && <><span className="text-muted-ink">Notes</span><span className="text-navy">{p.notes}</span></>}
         </div>
       </div>
     )
@@ -143,24 +143,24 @@ function ActionDetails({
           <span className="text-sm font-semibold uppercase tracking-wide">New Income</span>
         </div>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mt-3 items-center">
-          <span className="text-gray-500">Description</span><span className="font-medium text-gray-900">{p.description}</span>
-          <span className="text-gray-500">Amount</span><span className="font-semibold text-green-600">{formatCurrency(p.amount)}</span>
-          <span className="text-gray-500">Category</span>
+          <span className="text-muted-ink">Description</span><span className="font-medium text-navy">{p.description}</span>
+          <span className="text-muted-ink">Amount</span><span className="font-semibold text-green-600">{formatCurrency(p.amount)}</span>
+          <span className="text-muted-ink">Category</span>
           <select value={category} onChange={(e) => onCategoryChange(e.target.value)} className={selectCls}>
             {INCOME_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
-          <span className="text-gray-500">Recurrence</span>
+          <span className="text-muted-ink">Recurrence</span>
           <select value={recurrence} onChange={(e) => onRecurrenceChange(e.target.value)} className={selectCls}>
             <option value="">Not specified</option>
             {RECURRENCE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <span className="text-gray-500">Date</span><span className="font-medium text-gray-900">{p.date}</span>
-          {p.source && <><span className="text-gray-500">Source</span><span className="text-gray-900">{p.source}</span></>}
-          {projectName && <><span className="text-gray-500">Project</span><span className="font-medium text-gray-900">{projectName}</span></>}
+          <span className="text-muted-ink">Date</span><span className="font-medium text-navy">{p.date}</span>
+          {p.source && <><span className="text-muted-ink">Source</span><span className="text-navy">{p.source}</span></>}
+          {projectName && <><span className="text-muted-ink">Project</span><span className="font-medium text-navy">{projectName}</span></>}
         </div>
         <div className="pt-1">
           <ProjectPicker selectedId={projectId} onChange={onProjectChange} />
@@ -269,7 +269,7 @@ export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 space-y-4 max-w-sm">
+    <div className="rounded-xl border border-hairline bg-white shadow-sm p-4 space-y-4 max-w-sm">
       <ActionDetails
         action={action}
         category={category}
@@ -282,7 +282,7 @@ export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }
       />
 
       {action.type === 'create_expense' && (
-        <div className="border-t border-gray-100 pt-3">
+        <div className="border-t border-hairline/70 pt-3">
           <input
             ref={fileInputRef}
             type="file"
@@ -303,11 +303,11 @@ export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={status === 'loading'}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs text-muted-ink hover:text-navy/80 transition-colors disabled:opacity-50"
             >
               <Paperclip className="h-3.5 w-3.5 shrink-0" />
               {receiptFile ? (
-                <span className="truncate max-w-[180px] text-gray-700 font-medium">{receiptFile.name}</span>
+                <span className="truncate max-w-[180px] text-navy/80 font-medium">{receiptFile.name}</span>
               ) : (
                 <span>Attach receipt (optional)</span>
               )}
@@ -319,7 +319,7 @@ export function ConfirmationCard({ action, sessionId, onConfirmed, onCancelled }
                   setReceiptFile(null)
                   if (fileInputRef.current) fileInputRef.current.value = ''
                 }}
-                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                className="text-xs text-muted-ink/60 hover:text-red-500 transition-colors"
               >
                 Remove
               </button>

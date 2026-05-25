@@ -23,7 +23,7 @@ export default async function DashboardLayout({
   const userEmail = session.user.email ?? undefined
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-off-white overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden md:flex">
         <Sidebar userEmail={userEmail} orgName={orgName ?? undefined} />
@@ -32,15 +32,17 @@ export default async function DashboardLayout({
       {/* Main area */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Mobile top bar */}
-        <header className="flex h-14 items-center gap-3 border-b border-gray-200 bg-white px-4 md:hidden">
+        <header className="flex h-14 items-center gap-3 border-b border-hairline bg-white px-4 md:hidden">
           <MobileNav userEmail={userEmail} orgName={orgName ?? undefined} />
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600">
-              <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/15">
+              <svg className="h-4 w-4 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <span className="text-base font-bold text-gray-900">Finvio</span>
+            <span className="text-base font-extrabold tracking-tighter text-navy">
+              FINVIO<span className="text-brand">.ai</span>
+            </span>
           </div>
         </header>
 

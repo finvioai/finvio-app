@@ -64,13 +64,13 @@ function UploadStep({ onFileSelected }: { onFileSelected: (file: File) => void }
       onClick={() => inputRef.current?.click()}
       className={cn(
         'flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-16 cursor-pointer transition-colors',
-        dragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'
+        dragging ? 'border-brand bg-brand-tint' : 'border-hairline bg-white hover:border-gray-400 hover:bg-off-white'
       )}
     >
-      <Upload className={cn('h-10 w-10 mb-4', dragging ? 'text-blue-500' : 'text-gray-400')} />
-      <p className="text-sm font-medium text-gray-900">Drop your CSV or XLSX file here</p>
-      <p className="text-xs text-gray-500 mt-1">or click to browse</p>
-      <p className="text-xs text-gray-400 mt-3">Supports bank statements, revenue exports, expense exports</p>
+      <Upload className={cn('h-10 w-10 mb-4', dragging ? 'text-brand/80' : 'text-muted-ink/60')} />
+      <p className="text-sm font-medium text-navy">Drop your CSV or XLSX file here</p>
+      <p className="text-xs text-muted-ink mt-1">or click to browse</p>
+      <p className="text-xs text-muted-ink/60 mt-3">Supports bank statements, revenue exports, expense exports</p>
       <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleChange} />
     </div>
   )
@@ -133,11 +133,11 @@ function MappingStep({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-3">
-        <FileText className="h-5 w-5 text-gray-400 shrink-0" />
+      <div className="rounded-lg border border-hairline bg-off-white px-4 py-3 flex items-center gap-3">
+        <FileText className="h-5 w-5 text-muted-ink/60 shrink-0" />
         <div>
-          <p className="text-sm font-medium text-gray-900">{file.name}</p>
-          <p className="text-xs text-gray-500">{headers.length} columns detected</p>
+          <p className="text-sm font-medium text-navy">{file.name}</p>
+          <p className="text-xs text-muted-ink">{headers.length} columns detected</p>
         </div>
       </div>
 
@@ -145,7 +145,7 @@ function MappingStep({
         <div className="space-y-1.5">
           <Label>Date column *</Label>
           <select value={mapping.date} onChange={(e) => set('date', e.target.value)} required
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="w-full rounded-md border border-hairline bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             {headerOptions.map((h) => <option key={h} value={h}>{h || '— select —'}</option>)}
           </select>
         </div>
@@ -153,7 +153,7 @@ function MappingStep({
         <div className="space-y-1.5">
           <Label>Description column *</Label>
           <select value={mapping.description} onChange={(e) => set('description', e.target.value)} required
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="w-full rounded-md border border-hairline bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             {headerOptions.map((h) => <option key={h} value={h}>{h || '— select —'}</option>)}
           </select>
         </div>
@@ -161,9 +161,9 @@ function MappingStep({
 
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+          <label className="flex items-center gap-2 cursor-pointer text-sm text-navy/80">
             <input type="checkbox" checked={useDebitCredit} onChange={(e) => setUseDebitCredit(e.target.checked)}
-              className="rounded border-gray-300" />
+              className="rounded border-hairline" />
             File has separate Debit / Credit columns (bank statement format)
           </label>
         </div>
@@ -173,14 +173,14 @@ function MappingStep({
             <div className="space-y-1.5">
               <Label>Debit column (expenses)</Label>
               <select value={mapping.debit} onChange={(e) => set('debit', e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full rounded-md border border-hairline bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {headerOptions.map((h) => <option key={h} value={h}>{h || '— select —'}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
               <Label>Credit column (income)</Label>
               <select value={mapping.credit} onChange={(e) => set('credit', e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full rounded-md border border-hairline bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {headerOptions.map((h) => <option key={h} value={h}>{h || '— select —'}</option>)}
               </select>
             </div>
@@ -190,14 +190,14 @@ function MappingStep({
             <div className="space-y-1.5">
               <Label>Amount column *</Label>
               <select value={mapping.amount} onChange={(e) => set('amount', e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full rounded-md border border-hairline bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {headerOptions.map((h) => <option key={h} value={h}>{h || '— select —'}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
               <Label>Positive amounts are…</Label>
               <select value={mapping.positiveIs} onChange={(e) => set('positiveIs', e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full rounded-md border border-hairline bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {IMPORT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
@@ -224,8 +224,8 @@ function DoneStep({ result, onReset }: { result: ImportResult; onReset: () => vo
     <div className="text-center py-8 space-y-4">
       <CheckCircle2 className="h-14 w-14 text-green-500 mx-auto" />
       <div>
-        <p className="text-xl font-bold text-gray-900">{result.imported} transactions imported</p>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-xl font-bold text-navy">{result.imported} transactions imported</p>
+        <p className="text-sm text-muted-ink mt-1">
           {result.skipped} duplicates skipped · {result.errors} rows with errors
         </p>
       </div>
@@ -327,8 +327,8 @@ export default function ImportPage() {
     <div className="p-6 max-w-3xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Import Data</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Upload a CSV or XLSX file to import transactions</p>
+        <h1 className="text-2xl font-bold text-navy">Import Data</h1>
+        <p className="text-sm text-muted-ink mt-0.5">Upload a CSV or XLSX file to import transactions</p>
       </div>
 
       {/* Step indicator */}
@@ -337,22 +337,22 @@ export default function ImportPage() {
           <div key={s.id} className="flex items-center gap-2">
             <div className={cn(
               'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors',
-              i < activeStepIndex ? 'bg-blue-600 text-white' :
-              i === activeStepIndex ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-600' :
-              'bg-gray-100 text-gray-400'
+              i < activeStepIndex ? 'bg-brand text-white' :
+              i === activeStepIndex ? 'bg-brand-tint text-brand ring-2 ring-blue-600' :
+              'bg-off-white text-muted-ink/60'
             )}>
               {i < activeStepIndex ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
             </div>
-            <span className={cn('text-sm hidden sm:block', i === activeStepIndex ? 'font-medium text-gray-900' : 'text-gray-400')}>
+            <span className={cn('text-sm hidden sm:block', i === activeStepIndex ? 'font-medium text-navy' : 'text-muted-ink/60')}>
               {s.label}
             </span>
-            {i < STEPS.length - 1 && <ChevronRight className="h-4 w-4 text-gray-300" />}
+            {i < STEPS.length - 1 && <ChevronRight className="h-4 w-4 text-muted-ink/40" />}
           </div>
         ))}
       </div>
 
       {/* Step content */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6">
+      <div className="rounded-xl border border-hairline bg-white p-6">
         {step === 'upload' && <UploadStep onFileSelected={handleFileSelected} />}
 
         {step === 'map' && file && (
@@ -375,9 +375,9 @@ export default function ImportPage() {
 
         {step === 'importing' && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <p className="text-sm font-medium text-gray-900">Importing transactions…</p>
-            <p className="text-xs text-gray-500">This may take a moment for large files</p>
+            <Loader2 className="h-8 w-8 animate-spin text-brand" />
+            <p className="text-sm font-medium text-navy">Importing transactions…</p>
+            <p className="text-xs text-muted-ink">This may take a moment for large files</p>
           </div>
         )}
 

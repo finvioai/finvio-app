@@ -50,11 +50,11 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-off-white">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="mx-auto mb-4 w-12 h-12 bg-brand-tint rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
@@ -74,18 +74,20 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-off-white">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-8 h-8 bg-brand/15 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <span className="text-xl font-bold text-gray-900">Finvio</span>
+            <span className="text-xl font-extrabold tracking-tighter text-navy">
+              FINVIO<span className="text-brand">.ai</span>
+            </span>
           </div>
-          <p className="text-sm text-gray-500">AI-powered financial intelligence</p>
+          <p className="text-sm text-muted-ink">AI-powered financial intelligence</p>
         </div>
 
         <Card>
@@ -143,16 +145,16 @@ export default function SignupPage() {
                 {loading ? 'Creating account...' : 'Create account'}
               </Button>
 
-              <p className="text-center text-xs text-gray-500">
+              <p className="text-center text-xs text-muted-ink">
                 By signing up you agree to our{' '}
                 <span className="underline cursor-pointer">Terms of Service</span> and{' '}
                 <span className="underline cursor-pointer">Privacy Policy</span>.
               </p>
             </form>
 
-            <p className="text-center text-sm text-gray-600">
+            <p className="text-center text-sm text-muted-ink">
               Already have an account?{' '}
-              <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/login" className="font-medium text-brand hover:text-navy">
                 Sign in
               </Link>
             </p>

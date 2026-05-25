@@ -16,9 +16,9 @@ function fmtDate(iso: string | null) {
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
   active:    'bg-green-50 text-green-700',
-  completed: 'bg-blue-50 text-blue-700',
+  completed: 'bg-brand-tint text-brand',
   on_hold:   'bg-yellow-50 text-yellow-700',
-  cancelled: 'bg-gray-100 text-gray-500',
+  cancelled: 'bg-off-white text-muted-ink',
 }
 
 interface ProjectRow {
@@ -69,47 +69,47 @@ function CreateProjectForm({ onCreated, onCancel }: { onCreated: () => void; onC
   }
 
   return (
-    <form onSubmit={submit} className="rounded-xl border border-blue-200 bg-blue-50/40 p-5 space-y-4">
+    <form onSubmit={submit} className="rounded-xl border border-brand/20 bg-brand-tint/40 p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">New Project</h3>
-        <button type="button" onClick={onCancel}><X className="h-4 w-4 text-gray-400 hover:text-gray-600" /></button>
+        <h3 className="text-sm font-semibold text-navy">New Project</h3>
+        <button type="button" onClick={onCancel}><X className="h-4 w-4 text-muted-ink/60 hover:text-muted-ink" /></button>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-medium text-gray-600">Project name *</label>
+          <label className="text-xs font-medium text-muted-ink">Project name *</label>
           <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="mt-1 w-full rounded-md border border-hairline px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600">Client</label>
+          <label className="text-xs font-medium text-muted-ink">Client</label>
           <input value={form.client} onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="mt-1 w-full rounded-md border border-hairline px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600">Budget ($)</label>
+          <label className="text-xs font-medium text-muted-ink">Budget ($)</label>
           <input type="number" min="0" step="0.01" value={form.budget} onChange={e => setForm(f => ({ ...f, budget: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="mt-1 w-full rounded-md border border-hairline px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600">Start date</label>
+          <label className="text-xs font-medium text-muted-ink">Start date</label>
           <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="mt-1 w-full rounded-md border border-hairline px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-600">End date</label>
+          <label className="text-xs font-medium text-muted-ink">End date</label>
           <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="mt-1 w-full rounded-md border border-hairline px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-xs font-medium text-gray-600">Description</label>
+          <label className="text-xs font-medium text-muted-ink">Description</label>
           <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            className="mt-1 w-full rounded-md border border-hairline px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
       </div>
       <div className="flex gap-2 justify-end">
-        <button type="button" onClick={onCancel} className="rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-        <button type="submit" disabled={saving} className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 flex items-center gap-1.5">
+        <button type="button" onClick={onCancel} className="rounded-md border border-hairline px-3 py-1.5 text-sm text-muted-ink hover:bg-off-white">Cancel</button>
+        <button type="submit" disabled={saving} className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-navy disabled:opacity-60 flex items-center gap-1.5">
           {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Create project
         </button>
@@ -141,14 +141,14 @@ function ProjectRow({ project, onUpdated }: { project: ProjectRow; onUpdated: ()
 
   return (
     <>
-      <tr className={cn('border-b border-gray-100 hover:bg-gray-50 cursor-pointer', expanded && 'bg-blue-50/30')}
+      <tr className={cn('border-b border-hairline/70 hover:bg-off-white cursor-pointer', expanded && 'bg-brand-tint/30')}
           onClick={() => setExpanded(!expanded)}>
         <td className="py-3 pr-4">
           <div className="flex items-center gap-2">
-            {expanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
+            {expanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-ink/60 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-ink/60 shrink-0" />}
             <div>
-              <p className="text-sm font-medium text-gray-900">{project.name}</p>
-              {project.client && <p className="text-xs text-gray-500">{project.client}</p>}
+              <p className="text-sm font-medium text-navy">{project.name}</p>
+              {project.client && <p className="text-xs text-muted-ink">{project.client}</p>}
             </div>
           </div>
         </td>
@@ -157,45 +157,45 @@ function ProjectRow({ project, onUpdated }: { project: ProjectRow; onUpdated: ()
             {project.status.replace('_', ' ')}
           </span>
         </td>
-        <td className="py-3 pr-4 text-sm text-gray-700">{project.budget ? fmt(project.budget) : '—'}</td>
+        <td className="py-3 pr-4 text-sm text-navy/80">{project.budget ? fmt(project.budget) : '—'}</td>
         <td className="py-3 pr-4 text-sm text-green-700 font-medium">{fmt(project.collected)}</td>
         <td className="py-3 pr-4 text-sm text-red-600">{fmt(project.expenses)}</td>
-        <td className="py-3 pr-4 text-sm text-gray-700">{project.outstanding != null ? fmt(project.outstanding) : '—'}</td>
-        <td className="py-3 text-xs text-gray-400">{fmtDate(project.end_date)}</td>
+        <td className="py-3 pr-4 text-sm text-navy/80">{project.outstanding != null ? fmt(project.outstanding) : '—'}</td>
+        <td className="py-3 text-xs text-muted-ink/60">{fmtDate(project.end_date)}</td>
       </tr>
       {expanded && (
-        <tr className="border-b border-gray-100 bg-blue-50/20">
+        <tr className="border-b border-hairline/70 bg-brand-tint/20">
           <td colSpan={7} className="px-8 py-4">
             <div className="space-y-3">
               {project.description && (
-                <p className="text-sm text-gray-600">{project.description}</p>
+                <p className="text-sm text-muted-ink">{project.description}</p>
               )}
               {budgetPct !== null && (
                 <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-gray-500">
+                  <div className="flex justify-between text-xs text-muted-ink">
                     <span>Budget collected</span>
                     <span>{budgetPct}%</span>
                   </div>
-                  <div className="h-1.5 w-full rounded-full bg-gray-100">
-                    <div className={cn('h-1.5 rounded-full', budgetPct >= 100 ? 'bg-green-500' : 'bg-blue-500')}
+                  <div className="h-1.5 w-full rounded-full bg-off-white">
+                    <div className={cn('h-1.5 rounded-full', budgetPct >= 100 ? 'bg-green-500' : 'bg-brand')}
                          style={{ width: `${budgetPct}%` }} />
                   </div>
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Status:</span>
+                <span className="text-xs text-muted-ink">Status:</span>
                 {(['active', 'completed', 'on_hold', 'cancelled'] as ProjectStatus[]).map((s) => (
                   <button key={s} disabled={updating || project.status === s}
                     onClick={(e) => { e.stopPropagation(); setStatus(s) }}
                     className={cn('rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                      project.status === s ? STATUS_STYLES[s] + ' opacity-100' : 'border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40'
+                      project.status === s ? STATUS_STYLES[s] + ' opacity-100' : 'border border-hairline text-muted-ink hover:bg-off-white disabled:opacity-40'
                     )}>
                     {s.replace('_', ' ')}
                   </button>
                 ))}
               </div>
               {(project.start_date || project.end_date) && (
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-muted-ink/60">
                   {project.start_date && `Start: ${fmtDate(project.start_date)}`}
                   {project.start_date && project.end_date && ' · '}
                   {project.end_date && `Due: ${fmtDate(project.end_date)}`}
@@ -238,11 +238,11 @@ export default function ProjectsPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Track revenue and expenses by project or client</p>
+          <h1 className="text-2xl font-bold text-navy">Projects</h1>
+          <p className="text-sm text-muted-ink mt-0.5">Track revenue and expenses by project or client</p>
         </div>
         <button onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+          className="flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-navy transition-colors">
           <Plus className="h-3.5 w-3.5" />
           New project
         </button>
@@ -251,17 +251,17 @@ export default function ProjectsPage() {
       {/* Summary cards */}
       {projects.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Active projects</p>
-            <p className="mt-1.5 text-2xl font-bold text-gray-900">{projects.filter(p => p.status === 'active').length}</p>
+          <div className="rounded-xl border border-hairline bg-white p-4">
+            <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Active projects</p>
+            <p className="mt-1.5 text-2xl font-bold text-navy">{projects.filter(p => p.status === 'active').length}</p>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Collected (active)</p>
+          <div className="rounded-xl border border-hairline bg-white p-4">
+            <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Collected (active)</p>
             <p className="mt-1.5 text-2xl font-bold text-green-600">{fmt(totalCollected)}</p>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total budget (active)</p>
-            <p className="mt-1.5 text-2xl font-bold text-gray-900">{totalBudget > 0 ? fmt(totalBudget) : '—'}</p>
+          <div className="rounded-xl border border-hairline bg-white p-4">
+            <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Total budget (active)</p>
+            <p className="mt-1.5 text-2xl font-bold text-navy">{totalBudget > 0 ? fmt(totalBudget) : '—'}</p>
           </div>
         </div>
       )}
@@ -279,7 +279,7 @@ export default function ProjectsPage() {
           {['all', 'active', 'completed', 'on_hold', 'cancelled'].map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={cn('px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                statusFilter === s ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                statusFilter === s ? 'bg-brand-tint text-brand' : 'text-muted-ink hover:text-navy/80 hover:bg-off-white'
               )}>
               {s === 'all' ? 'All' : s.replace('_', ' ')}
             </button>
@@ -288,25 +288,25 @@ export default function ProjectsPage() {
       )}
 
       {/* Table */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-xl border border-hairline bg-white overflow-hidden">
         {loading ? (
           <div className="flex h-48 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+            <Loader2 className="h-6 w-6 animate-spin text-brand" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <FolderOpen className="h-10 w-10 text-gray-300 mb-3" />
-            <p className="text-sm font-medium text-gray-900 mb-1">
+            <FolderOpen className="h-10 w-10 text-muted-ink/40 mb-3" />
+            <p className="text-sm font-medium text-navy mb-1">
               {projects.length === 0 ? 'No projects yet' : 'No projects match this filter'}
             </p>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-muted-ink mb-4">
               {projects.length === 0
                 ? 'Create your first project to track revenue and expenses by client or engagement.'
                 : 'Try selecting a different status filter.'}
             </p>
             {projects.length === 0 && (
               <button onClick={() => setShowForm(true)}
-                className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">
+                className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-navy">
                 Create first project
               </button>
             )}
@@ -314,15 +314,15 @@ export default function ProjectsPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-gray-100">
+              <thead className="border-b border-hairline/70">
                 <tr>
-                  <th className="text-left py-3 pr-4 pl-4 text-xs font-medium text-gray-500">Project</th>
-                  <th className="text-left py-3 pr-4 text-xs font-medium text-gray-500">Status</th>
-                  <th className="text-left py-3 pr-4 text-xs font-medium text-gray-500">Budget</th>
-                  <th className="text-left py-3 pr-4 text-xs font-medium text-gray-500">Collected</th>
-                  <th className="text-left py-3 pr-4 text-xs font-medium text-gray-500">Expenses</th>
-                  <th className="text-left py-3 pr-4 text-xs font-medium text-gray-500">Outstanding</th>
-                  <th className="text-left py-3 text-xs font-medium text-gray-500">Due</th>
+                  <th className="text-left py-3 pr-4 pl-4 text-xs font-medium text-muted-ink">Project</th>
+                  <th className="text-left py-3 pr-4 text-xs font-medium text-muted-ink">Status</th>
+                  <th className="text-left py-3 pr-4 text-xs font-medium text-muted-ink">Budget</th>
+                  <th className="text-left py-3 pr-4 text-xs font-medium text-muted-ink">Collected</th>
+                  <th className="text-left py-3 pr-4 text-xs font-medium text-muted-ink">Expenses</th>
+                  <th className="text-left py-3 pr-4 text-xs font-medium text-muted-ink">Outstanding</th>
+                  <th className="text-left py-3 text-xs font-medium text-muted-ink">Due</th>
                 </tr>
               </thead>
               <tbody className="divide-y-0">

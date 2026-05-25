@@ -226,11 +226,11 @@ function SubmitExpenseSheet({ open, onOpenChange, onSuccess }: SubmitExpenseShee
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 rounded-md border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors w-full"
+                className="flex items-center gap-2 rounded-md border border-dashed border-hairline px-3 py-2 text-sm text-muted-ink hover:border-gray-400 hover:text-navy/80 transition-colors w-full"
               >
                 <Paperclip className="h-4 w-4 shrink-0" />
                 {receiptFile ? (
-                  <span className="truncate font-medium text-gray-700">{receiptFile.name}</span>
+                  <span className="truncate font-medium text-navy/80">{receiptFile.name}</span>
                 ) : (
                   <span>Attach receipt or bill (optional)</span>
                 )}
@@ -239,7 +239,7 @@ function SubmitExpenseSheet({ open, onOpenChange, onSuccess }: SubmitExpenseShee
                 <button
                   type="button"
                   onClick={() => { setReceiptFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
-                  className="text-xs text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                  className="text-xs text-muted-ink/60 hover:text-red-500 transition-colors shrink-0"
                 >
                   Remove
                 </button>
@@ -278,29 +278,29 @@ function ExpenseRow({ expense, onAction }: { expense: ExpenseReport; onAction: (
   }
 
   return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+    <tr className="border-b border-hairline/70 hover:bg-off-white transition-colors">
       <td className="px-4 py-3">
         <div>
-          <p className="text-sm font-medium text-gray-900">{expense.title}</p>
-          {expense.submitter_name && <p className="text-xs text-gray-500">{expense.submitter_name}</p>}
+          <p className="text-sm font-medium text-navy">{expense.title}</p>
+          {expense.submitter_name && <p className="text-xs text-muted-ink">{expense.submitter_name}</p>}
         </div>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-500">{expense.category}</td>
-      <td className="px-4 py-3 text-sm font-medium text-gray-900 tabular-nums">{fmt(expense.amount)}</td>
-      <td className="px-4 py-3 text-sm text-gray-500">{fmtDate(expense.date)}</td>
+      <td className="px-4 py-3 text-sm text-muted-ink">{expense.category}</td>
+      <td className="px-4 py-3 text-sm font-medium text-navy tabular-nums">{fmt(expense.amount)}</td>
+      <td className="px-4 py-3 text-sm text-muted-ink">{fmtDate(expense.date)}</td>
       <td className="px-4 py-3">
         {expense.receipt_url ? (
           <a
             href={expense.receipt_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+            className="inline-flex items-center gap-1 text-xs text-brand hover:text-navy hover:underline"
           >
             <Paperclip className="h-3.5 w-3.5" />
             View
           </a>
         ) : (
-          <span className="text-xs text-gray-400">—</span>
+          <span className="text-xs text-muted-ink/60">—</span>
         )}
       </td>
       <td className="px-4 py-3">
@@ -329,10 +329,10 @@ function ExpenseRow({ expense, onAction }: { expense: ExpenseReport; onAction: (
           </div>
         )}
         {expense.status === 'approved' && (
-          <span className="text-xs text-gray-400">{fmtDate(expense.reviewed_at)}</span>
+          <span className="text-xs text-muted-ink/60">{fmtDate(expense.reviewed_at)}</span>
         )}
         {expense.status === 'rejected' && (
-          <span className="text-xs text-gray-400">{fmtDate(expense.reviewed_at)}</span>
+          <span className="text-xs text-muted-ink/60">{fmtDate(expense.reviewed_at)}</span>
         )}
       </td>
     </tr>
@@ -346,7 +346,7 @@ const SOURCE_LABELS: Record<string, string> = {
   plaid: 'Plaid', paypal: 'PayPal', shopify: 'Shopify', invoice: 'Invoice',
 }
 const SOURCE_COLORS: Record<string, string> = {
-  manual: 'bg-gray-100 text-gray-700', ai: 'bg-blue-100 text-blue-700',
+  manual: 'bg-off-white text-navy/80', ai: 'bg-brand-tint text-brand',
   csv: 'bg-orange-100 text-orange-700', stripe: 'bg-purple-100 text-purple-700',
   plaid: 'bg-indigo-100 text-indigo-700', paypal: 'bg-sky-100 text-sky-700',
   shopify: 'bg-green-100 text-green-700', invoice: 'bg-teal-100 text-teal-700',
@@ -425,8 +425,8 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Expense reports and direct expense transactions</p>
+          <h1 className="text-2xl font-bold text-navy">Expenses</h1>
+          <p className="text-sm text-muted-ink mt-0.5">Expense reports and direct expense transactions</p>
         </div>
         <Button onClick={() => setShowSubmit(true)}>
           <Plus className="h-4 w-4 mr-1.5" />
@@ -435,12 +435,12 @@ export default function ExpensesPage() {
       </div>
 
       {/* Main tab switcher */}
-      <div className="flex gap-1 mb-6 border-b border-gray-200">
+      <div className="flex gap-1 mb-6 border-b border-hairline">
         <button
           onClick={() => setMainTab('transactions')}
           className={cn(
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
-            mainTab === 'transactions' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+            mainTab === 'transactions' ? 'border-brand text-brand' : 'border-transparent text-muted-ink hover:text-navy/80'
           )}
         >
           All Expenses
@@ -449,7 +449,7 @@ export default function ExpensesPage() {
           onClick={() => setMainTab('reports')}
           className={cn(
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
-            mainTab === 'reports' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+            mainTab === 'reports' ? 'border-brand text-brand' : 'border-transparent text-muted-ink hover:text-navy/80'
           )}
         >
           Expense Reports
@@ -458,41 +458,41 @@ export default function ExpensesPage() {
 
       {mainTab === 'transactions' ? (
         /* ── Expense Transactions view ──────────────────────────────────── */
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-xl border border-hairline bg-white overflow-hidden">
           {txnsLoading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-ink/60" />
             </div>
           ) : txns.length === 0 ? (
             <div className="py-16 text-center">
-              <Receipt className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm font-medium text-gray-900">No expense transactions yet</p>
-              <p className="text-xs text-gray-500 mt-1">Expenses added via AI chat, manual entry, or CSV import appear here.</p>
+              <Receipt className="h-10 w-10 text-muted-ink/40 mx-auto mb-3" />
+              <p className="text-sm font-medium text-navy">No expense transactions yet</p>
+              <p className="text-xs text-muted-ink mt-1">Expenses added via AI chat, manual entry, or CSV import appear here.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="border-b border-gray-200 bg-gray-50">
+                <thead className="border-b border-hairline bg-off-white">
                   <tr>
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Description</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Recurrence</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Receipt</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Description</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Category</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Recurrence</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Amount</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Date</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Source</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Receipt</th>
                   </tr>
                 </thead>
                 <tbody>
                   {txns.map((t) => (
-                    <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{t.description}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{t.category ?? '—'}</td>
+                    <tr key={t.id} className="border-b border-hairline/70 hover:bg-off-white transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-navy">{t.description}</td>
+                      <td className="px-4 py-3 text-sm text-muted-ink">{t.category ?? '—'}</td>
                       <td className="px-4 py-2">
                         <select
                           value={t.recurrence ?? ''}
                           onChange={(e) => handleRecurrenceChange(t.id, e.target.value || null)}
-                          className="text-xs border border-gray-200 rounded px-2 h-7 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="text-xs border border-hairline rounded px-2 h-7 bg-white text-navy/80 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         >
                           <option value="">Not tagged</option>
                           {RECURRENCE_OPTIONS.map((r) => (
@@ -501,9 +501,9 @@ export default function ExpensesPage() {
                         </select>
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-red-600 tabular-nums">{fmt(t.amount)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{fmtDate(t.date)}</td>
+                      <td className="px-4 py-3 text-sm text-muted-ink">{fmtDate(t.date)}</td>
                       <td className="px-4 py-3">
-                        <span className={cn('inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium', SOURCE_COLORS[t.source] ?? 'bg-gray-100 text-gray-700')}>
+                        <span className={cn('inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium', SOURCE_COLORS[t.source] ?? 'bg-off-white text-navy/80')}>
                           {SOURCE_LABELS[t.source] ?? t.source}
                         </span>
                       </td>
@@ -513,13 +513,13 @@ export default function ExpensesPage() {
                             href={t.receipt_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                            className="inline-flex items-center gap-1 text-xs text-brand hover:text-navy hover:underline"
                           >
                             <Paperclip className="h-3.5 w-3.5" />
                             View
                           </a>
                         ) : (
-                          <span className="text-xs text-gray-400">—</span>
+                          <span className="text-xs text-muted-ink/60">—</span>
                         )}
                       </td>
                     </tr>
@@ -534,27 +534,27 @@ export default function ExpensesPage() {
         <>
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending Review</p>
-          <p className={cn('mt-1.5 text-2xl font-bold', pendingCount > 0 ? 'text-yellow-600' : 'text-gray-900')}>
+        <div className="rounded-xl border border-hairline bg-white p-5">
+          <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Pending Review</p>
+          <p className={cn('mt-1.5 text-2xl font-bold', pendingCount > 0 ? 'text-yellow-600' : 'text-navy')}>
             {pendingCount}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5">{fmt(totalPending)} awaiting approval</p>
+          <p className="text-xs text-muted-ink/60 mt-0.5">{fmt(totalPending)} awaiting approval</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Approved</p>
+        <div className="rounded-xl border border-hairline bg-white p-5">
+          <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Approved</p>
           <p className="mt-1.5 text-2xl font-bold text-green-600">{fmt(totalApproved)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">expense transactions created</p>
+          <p className="text-xs text-muted-ink/60 mt-0.5">expense transactions created</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Reports</p>
-          <p className="mt-1.5 text-2xl font-bold text-gray-900">{expenses.length}</p>
-          <p className="text-xs text-gray-400 mt-0.5">all time</p>
+        <div className="rounded-xl border border-hairline bg-white p-5">
+          <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Total Reports</p>
+          <p className="mt-1.5 text-2xl font-bold text-navy">{expenses.length}</p>
+          <p className="text-xs text-muted-ink/60 mt-0.5">all time</p>
         </div>
       </div>
 
       {/* Status filter tabs */}
-      <div className="flex gap-1 mb-4 border-b border-gray-200">
+      <div className="flex gap-1 mb-4 border-b border-hairline">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.value}
@@ -562,8 +562,8 @@ export default function ExpensesPage() {
             className={cn(
               'px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
               statusFilter === tab.value
-                ? 'border-blue-600 text-blue-700'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'border-brand text-brand'
+                : 'border-transparent text-muted-ink hover:text-navy/80'
             )}
           >
             {tab.label}
@@ -572,16 +572,16 @@ export default function ExpensesPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-xl border border-hairline bg-white overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-ink/60" />
           </div>
         ) : expenses.length === 0 ? (
           <div className="py-16 text-center">
-            <Receipt className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-900">No expense reports yet</p>
-            <p className="text-xs text-gray-500 mt-1 mb-4">Submit an expense to start tracking reimbursements</p>
+            <Receipt className="h-10 w-10 text-muted-ink/40 mx-auto mb-3" />
+            <p className="text-sm font-medium text-navy">No expense reports yet</p>
+            <p className="text-xs text-muted-ink mt-1 mb-4">Submit an expense to start tracking reimbursements</p>
             <Button onClick={() => setShowSubmit(true)}>
               <Plus className="h-4 w-4 mr-1.5" />
               Submit Expense
@@ -590,15 +590,15 @@ export default function ExpensesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="border-b border-gray-200 bg-gray-50">
+              <thead className="border-b border-hairline bg-off-white">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Title</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Receipt</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Title</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Category</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Amount</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Date</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Receipt</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Status</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody>

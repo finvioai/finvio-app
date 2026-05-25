@@ -20,9 +20,9 @@ const MONTHS = [
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white">
-      <div className="px-6 py-4 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+    <div className="rounded-xl border border-hairline bg-white">
+      <div className="px-6 py-4 border-b border-hairline/70">
+        <h2 className="text-sm font-semibold text-navy">{title}</h2>
       </div>
       <div className="p-6 space-y-4">{children}</div>
     </div>
@@ -36,7 +36,7 @@ function Field({ label, children, hint }: { label: string; children: React.React
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
       <div>
         <Label>{label}</Label>
-        {hint && <p className="text-xs text-gray-400 mt-0.5">{hint}</p>}
+        {hint && <p className="text-xs text-muted-ink/60 mt-0.5">{hint}</p>}
       </div>
       <div className="sm:col-span-2">{children}</div>
     </div>
@@ -88,13 +88,13 @@ export default function SettingsPage() {
 
   const isOwnerOrAdmin = role === 'owner' || role === 'admin'
 
-  const selectClass = 'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-  const inputClass = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const selectClass = 'w-full rounded-md border border-hairline bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+  const inputClass = 'w-full rounded-md border border-hairline px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand" />
       </div>
     )
   }
@@ -103,8 +103,8 @@ export default function SettingsPage() {
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Organization and preferences</p>
+        <h1 className="text-2xl font-bold text-navy">Settings</h1>
+        <p className="text-sm text-muted-ink mt-0.5">Organization and preferences</p>
       </div>
 
       {/* Org Settings */}
@@ -147,7 +147,7 @@ export default function SettingsPage() {
           </Field>
 
           {!isOwnerOrAdmin && (
-            <p className="text-xs text-gray-400">Only owners and admins can edit org settings.</p>
+            <p className="text-xs text-muted-ink/60">Only owners and admins can edit org settings.</p>
           )}
 
           <div className="flex items-center gap-3 pt-2">
@@ -167,13 +167,13 @@ export default function SettingsPage() {
       <Section title="Account">
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Role</span>
-            <span className={cn('font-medium capitalize', role === 'owner' ? 'text-blue-600' : 'text-gray-700')}>{role ?? '—'}</span>
+            <span className="text-muted-ink">Role</span>
+            <span className={cn('font-medium capitalize', role === 'owner' ? 'text-brand' : 'text-navy/80')}>{role ?? '—'}</span>
           </div>
           {org && (
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Organization ID</span>
-              <span className="font-mono text-xs text-gray-400">{org.id.slice(0, 8)}…</span>
+              <span className="text-muted-ink">Organization ID</span>
+              <span className="font-mono text-xs text-muted-ink/60">{org.id.slice(0, 8)}…</span>
             </div>
           )}
         </div>

@@ -33,11 +33,11 @@ function fmtDate(iso: string | null) {
 type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; className: string; icon: React.ReactNode }> = {
-  draft: { label: 'Draft', className: 'bg-gray-100 text-gray-700', icon: <FileText className="h-3 w-3" /> },
-  sent: { label: 'Sent', className: 'bg-blue-100 text-blue-700', icon: <Send className="h-3 w-3" /> },
+  draft: { label: 'Draft', className: 'bg-off-white text-navy/80', icon: <FileText className="h-3 w-3" /> },
+  sent: { label: 'Sent', className: 'bg-brand-tint text-brand', icon: <Send className="h-3 w-3" /> },
   paid: { label: 'Paid', className: 'bg-green-100 text-green-700', icon: <CheckCircle2 className="h-3 w-3" /> },
   overdue: { label: 'Overdue', className: 'bg-red-100 text-red-700', icon: <AlertTriangle className="h-3 w-3" /> },
-  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-gray-500', icon: <Ban className="h-3 w-3" /> },
+  cancelled: { label: 'Cancelled', className: 'bg-off-white text-muted-ink', icon: <Ban className="h-3 w-3" /> },
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -194,19 +194,19 @@ function InvoiceRow({ invoice, onStatusChange }: { invoice: Invoice; onStatusCha
   const canMarkPaid = invoice.status === 'sent' || invoice.status === 'overdue'
 
   return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+    <tr className="border-b border-hairline/70 hover:bg-off-white transition-colors">
       <td className="px-4 py-3">
-        <span className="font-mono text-sm font-medium text-gray-900">{invoice.invoice_number}</span>
+        <span className="font-mono text-sm font-medium text-navy">{invoice.invoice_number}</span>
       </td>
       <td className="px-4 py-3">
         <div>
-          <p className="text-sm font-medium text-gray-900">{invoice.customer_name ?? '—'}</p>
-          {invoice.customer_email && <p className="text-xs text-gray-500">{invoice.customer_email}</p>}
+          <p className="text-sm font-medium text-navy">{invoice.customer_name ?? '—'}</p>
+          {invoice.customer_email && <p className="text-xs text-muted-ink">{invoice.customer_email}</p>}
         </div>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-900 tabular-nums">{fmt(invoice.amount)}</td>
-      <td className="px-4 py-3 text-sm text-gray-500">{fmtDate(invoice.invoice_date)}</td>
-      <td className="px-4 py-3 text-sm text-gray-500">{fmtDate(invoice.due_date)}</td>
+      <td className="px-4 py-3 text-sm text-navy tabular-nums">{fmt(invoice.amount)}</td>
+      <td className="px-4 py-3 text-sm text-muted-ink">{fmtDate(invoice.invoice_date)}</td>
+      <td className="px-4 py-3 text-sm text-muted-ink">{fmtDate(invoice.due_date)}</td>
       <td className="px-4 py-3">
         <StatusBadge status={invoice.status} />
       </td>
@@ -274,8 +274,8 @@ export default function InvoicesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Create, send, and track invoices</p>
+          <h1 className="text-2xl font-bold text-navy">Invoices</h1>
+          <p className="text-sm text-muted-ink mt-0.5">Create, send, and track invoices</p>
         </div>
         <Button onClick={() => setShowNew(true)}>
           <Plus className="h-4 w-4 mr-1.5" />
@@ -285,27 +285,27 @@ export default function InvoicesPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Outstanding</p>
-          <p className="mt-1.5 text-2xl font-bold text-gray-900">{fmt(totalOutstanding)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">sent + overdue</p>
+        <div className="rounded-xl border border-hairline bg-white p-5">
+          <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Outstanding</p>
+          <p className="mt-1.5 text-2xl font-bold text-navy">{fmt(totalOutstanding)}</p>
+          <p className="text-xs text-muted-ink/60 mt-0.5">sent + overdue</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Collected</p>
+        <div className="rounded-xl border border-hairline bg-white p-5">
+          <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Collected</p>
           <p className="mt-1.5 text-2xl font-bold text-green-600">{fmt(totalPaid)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">paid invoices</p>
+          <p className="text-xs text-muted-ink/60 mt-0.5">paid invoices</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Overdue</p>
-          <p className={cn('mt-1.5 text-2xl font-bold', overdueCount > 0 ? 'text-red-600' : 'text-gray-900')}>
+        <div className="rounded-xl border border-hairline bg-white p-5">
+          <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">Overdue</p>
+          <p className={cn('mt-1.5 text-2xl font-bold', overdueCount > 0 ? 'text-red-600' : 'text-navy')}>
             {overdueCount}
           </p>
-          <p className="text-xs text-gray-400 mt-0.5">past due date</p>
+          <p className="text-xs text-muted-ink/60 mt-0.5">past due date</p>
         </div>
       </div>
 
       {/* Status filter tabs */}
-      <div className="flex gap-1 mb-4 border-b border-gray-200">
+      <div className="flex gap-1 mb-4 border-b border-hairline">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.value}
@@ -313,8 +313,8 @@ export default function InvoicesPage() {
             className={cn(
               'px-3 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
               statusFilter === tab.value
-                ? 'border-blue-600 text-blue-700'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'border-brand text-brand'
+                : 'border-transparent text-muted-ink hover:text-navy/80'
             )}
           >
             {tab.label}
@@ -323,16 +323,16 @@ export default function InvoicesPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-xl border border-hairline bg-white overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-ink/60" />
           </div>
         ) : invoices.length === 0 ? (
           <div className="py-16 text-center">
-            <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-900">No invoices yet</p>
-            <p className="text-xs text-gray-500 mt-1 mb-4">Create your first invoice to start tracking payments</p>
+            <FileText className="h-10 w-10 text-muted-ink/40 mx-auto mb-3" />
+            <p className="text-sm font-medium text-navy">No invoices yet</p>
+            <p className="text-xs text-muted-ink mt-1 mb-4">Create your first invoice to start tracking payments</p>
             <Button onClick={() => setShowNew(true)}>
               <Plus className="h-4 w-4 mr-1.5" />
               New Invoice
@@ -341,15 +341,15 @@ export default function InvoicesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="border-b border-gray-200 bg-gray-50">
+              <thead className="border-b border-hairline bg-off-white">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Invoice #</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Customer</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Issued</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Due</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Invoice #</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Customer</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Amount</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Issued</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Due</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Status</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-muted-ink uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody>

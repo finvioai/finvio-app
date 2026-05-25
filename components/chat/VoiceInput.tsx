@@ -361,41 +361,41 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
     <div className="relative">
       {/* Voice overlay */}
       {(isRecording || isProcessing) && (
-        <div className="absolute bottom-full mb-3 right-0 w-72 rounded-2xl border border-gray-200 bg-white shadow-xl p-4 z-50">
+        <div className="absolute bottom-full mb-3 right-0 w-72 rounded-2xl border border-hairline bg-white shadow-xl p-4 z-50">
           <div className="flex items-center gap-2 mb-3">
             {isProcessing ? (
-              <Loader2 className="h-3 w-3 text-blue-500 animate-spin shrink-0" />
+              <Loader2 className="h-3 w-3 text-brand/80 animate-spin shrink-0" />
             ) : (
               <span className="relative flex h-2.5 w-2.5 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
               </span>
             )}
-            <span className="text-xs font-medium text-gray-700">
+            <span className="text-xs font-medium text-navy/80">
               {isLoadingModel ? 'Loading model…' : isTranscribing ? 'Processing…' : 'Listening'}
             </span>
-            <span className="ml-auto text-xs text-gray-400 shrink-0">
+            <span className="ml-auto text-xs text-muted-ink/60 shrink-0">
               {isMobile ? 'Release to send' : isWhisperMode ? 'Click Send when done' : 'Esc to cancel'}
             </span>
           </div>
 
           {isLoadingModel ? (
             <div className="min-h-[80px] flex flex-col items-center justify-center gap-2">
-              <div className="w-full bg-gray-100 rounded-full h-1.5">
+              <div className="w-full bg-off-white rounded-full h-1.5">
                 <div
                   className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
                   style={{ width: `${modelProgress}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-400 text-center">
+              <p className="text-xs text-muted-ink/60 text-center">
                 Downloading speech model… {modelProgress}%<br />
-                <span className="text-gray-300">(one-time download)</span>
+                <span className="text-muted-ink/40">(one-time download)</span>
               </p>
             </div>
           ) : isWhisperMode ? (
             <div className="min-h-[80px] flex items-center justify-center">
               {isTranscribing ? (
-                <p className="text-xs text-gray-400">Transcribing…</p>
+                <p className="text-xs text-muted-ink/60">Transcribing…</p>
               ) : (
                 <div className="flex items-end gap-0.5 h-6">
                   {[2, 4, 6, 4, 3, 5, 6, 3, 4, 2].map((h, i) => (
@@ -412,29 +412,29 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
             <div className="min-h-[80px] text-sm leading-relaxed break-words">
               {displayText ? (
                 <>
-                  <span className="text-gray-900">{transcript}</span>
-                  <span className="text-gray-400">{interim}</span>
+                  <span className="text-navy">{transcript}</span>
+                  <span className="text-muted-ink/60">{interim}</span>
                 </>
               ) : (
-                <span className="text-gray-400 italic">Speak now…</span>
+                <span className="text-muted-ink/60 italic">Speak now…</span>
               )}
             </div>
           )}
 
           {!isMobile && isRecording && (
-            <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-hairline/70">
               <button type="button" onClick={handleCancel}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 transition-colors">
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-ink hover:bg-off-white transition-colors">
                 <X className="h-3.5 w-3.5" /> Cancel
               </button>
               {isWhisperMode && (
                 <button type="button" onClick={handleDesktopFill}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors">
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-ink border border-hairline hover:bg-off-white transition-colors">
                   <Pencil className="h-3.5 w-3.5" /> Edit
                 </button>
               )}
               <button type="button" onClick={handleDesktopSend} disabled={!isWhisperMode && !displayText}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors">
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium bg-brand text-white hover:bg-navy disabled:opacity-40 transition-colors">
                 <SendHorizontal className="h-3.5 w-3.5" /> Send
               </button>
             </div>
@@ -463,7 +463,7 @@ export function VoiceInput({ onTranscript, disabled }: VoiceInputProps) {
           'flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all duration-200 select-none',
           isRecording
             ? 'bg-red-500 text-white shadow-md scale-110 ring-4 ring-red-100'
-            : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700',
+            : 'bg-off-white text-muted-ink hover:bg-gray-200 hover:text-navy/80',
           (disabled || isProcessing) && 'opacity-40 cursor-not-allowed',
         )}
       >

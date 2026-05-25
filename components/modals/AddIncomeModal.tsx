@@ -135,7 +135,7 @@ export function AddIncomeModal({ open, onOpenChange, onSuccess }: AddIncomeModal
               ))}
             </select>
             {!form.category && (
-              <p className="text-xs text-gray-500">Leave blank to auto-categorize.</p>
+              <p className="text-xs text-muted-ink">Leave blank to auto-categorize.</p>
             )}
           </div>
 
@@ -152,7 +152,7 @@ export function AddIncomeModal({ open, onOpenChange, onSuccess }: AddIncomeModal
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-500">Affects how this income is counted in MRR calculations.</p>
+            <p className="text-xs text-muted-ink">Affects how this income is counted in MRR calculations.</p>
           </div>
 
           <div className="space-y-1.5">

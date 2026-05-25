@@ -42,7 +42,7 @@ const SUGGESTED_PROMPTS = [
 ]
 
 const categoryColors: Record<string, string> = {
-  cash: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
+  cash: 'bg-brand-tint text-brand border-brand/20 hover:bg-brand-tint',
   revenue: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
   reports: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
   write: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100',
@@ -87,7 +87,7 @@ function MessageBubble({
   return (
     <div className={cn('flex gap-3', isUser ? 'justify-end' : 'justify-start')}>
       {!isUser && (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 mt-0.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand mt-0.5">
           <Bot className="h-4 w-4 text-white" />
         </div>
       )}
@@ -96,8 +96,8 @@ function MessageBubble({
           className={cn(
             'rounded-2xl px-4 py-3 text-base leading-relaxed',
             isUser
-              ? 'bg-blue-600 text-white rounded-tr-sm'
-              : 'bg-white border border-gray-200 text-gray-900 rounded-tl-sm shadow-sm'
+              ? 'bg-brand text-white rounded-tr-sm'
+              : 'bg-white border border-hairline text-navy rounded-tl-sm shadow-sm'
           )}
         >
           {message.content}
@@ -114,7 +114,7 @@ function MessageBubble({
           <p className="text-sm text-green-600 px-1">Action confirmed and saved.</p>
         )}
         {message.cancelled && (
-          <p className="text-sm text-gray-400 px-1">Cancelled — nothing was saved.</p>
+          <p className="text-sm text-muted-ink/60 px-1">Cancelled — nothing was saved.</p>
         )}
       </div>
     </div>
@@ -143,18 +143,18 @@ function SessionSidebar({
   return (
     <>
       {/* Mobile header row with title and close button */}
-      <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200 md:hidden">
-        <span className="text-sm font-semibold text-gray-700">Recent Chats</span>
+      <div className="flex items-center justify-between px-3 py-3 border-b border-hairline md:hidden">
+        <span className="text-sm font-semibold text-navy/80">Recent Chats</span>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+          className="p-1.5 rounded-lg hover:bg-off-white text-muted-ink"
           aria-label="Close history"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="p-3 border-b border-gray-200">
+      <div className="p-3 border-b border-hairline">
         <Button
           size="sm"
           variant="outline"
@@ -169,10 +169,10 @@ function SessionSidebar({
       <div className="flex-1 overflow-y-auto py-2">
         {loading ? (
           <div className="flex justify-center py-6">
-            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            <Loader2 className="h-4 w-4 animate-spin text-muted-ink/60" />
           </div>
         ) : sessions.length === 0 ? (
-          <p className="px-3 py-4 text-sm text-gray-400 text-center">No previous chats</p>
+          <p className="px-3 py-4 text-sm text-muted-ink/60 text-center">No previous chats</p>
         ) : (
           sessions.map((s) => (
             <div
@@ -180,8 +180,8 @@ function SessionSidebar({
               className={cn(
                 'group relative flex items-center mx-1 rounded-md transition-colors',
                 activeSessionId === s.id
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-brand-tint text-brand'
+                  : 'text-navy/80 hover:bg-off-white'
               )}
               style={{ width: 'calc(100% - 8px)' }}
             >
@@ -190,12 +190,12 @@ function SessionSidebar({
                 className="flex-1 text-left px-3 py-2.5 min-w-0"
               >
                 <div className="flex items-start gap-2">
-                  <MessageSquare className={cn('h-3.5 w-3.5 shrink-0 mt-0.5', activeSessionId === s.id ? 'text-blue-500' : 'text-gray-400')} />
+                  <MessageSquare className={cn('h-3.5 w-3.5 shrink-0 mt-0.5', activeSessionId === s.id ? 'text-brand/80' : 'text-muted-ink/60')} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate leading-tight pr-4">
                       {s.title ?? 'Untitled chat'}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                    <p className="text-xs text-muted-ink/60 mt-0.5 flex items-center gap-1">
                       <Clock className="h-2.5 w-2.5" />
                       {timeAgo(s.updated_at)}
                     </p>
@@ -204,7 +204,7 @@ function SessionSidebar({
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDeleteSession(s.id) }}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 hover:bg-red-50"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-muted-ink/60 hover:text-red-500 hover:bg-red-50"
                 title="Delete chat"
               >
                 <Trash2 className="h-3 w-3" />
@@ -446,7 +446,7 @@ export default function AdvisorPage() {
       <div
         className={cn(
           // Base: fixed overlay on mobile, slides in/out
-          'fixed inset-y-0 left-0 z-50 flex flex-col w-72 border-r border-gray-200 bg-gray-50',
+          'fixed inset-y-0 left-0 z-50 flex flex-col w-72 border-r border-hairline bg-off-white',
           'transition-transform duration-200 ease-in-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
           // Desktop: always visible, reset to normal flow
@@ -467,25 +467,25 @@ export default function AdvisorPage() {
       {/* Chat area */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Header */}
-        <div className="border-b border-gray-200 bg-white px-4 md:px-6 py-4 flex items-center justify-between">
+        <div className="border-b border-hairline bg-white px-4 md:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Burger button — mobile only */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 shrink-0"
+              className="md:hidden p-1.5 rounded-lg hover:bg-off-white text-muted-ink shrink-0"
               aria-label="Open chat history"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-gray-900">AI Financial Advisor</h1>
-              <p className="text-sm text-gray-500 hidden sm:block">Powered by real financial data, not guesses</p>
+              <h1 className="text-base font-semibold text-navy">AI Financial Advisor</h1>
+              <p className="text-sm text-muted-ink hidden sm:block">Powered by real financial data, not guesses</p>
             </div>
           </div>
-          <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-full px-3 py-1 hidden sm:block">AI Powered</span>
+          <span className="text-xs text-muted-ink/60 bg-off-white border border-hairline rounded-full px-3 py-1 hidden sm:block">AI Powered</span>
         </div>
 
         {/* Data warning banner */}
@@ -506,12 +506,12 @@ export default function AdvisorPage() {
         <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 space-y-5">
           {isEmpty ? (
             <div className="flex flex-col items-center justify-center h-full text-center gap-6 pb-8">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50">
-                <Sparkles className="h-7 w-7 text-blue-600" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-tint">
+                <Sparkles className="h-7 w-7 text-brand" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Ask me anything about your finances</h2>
-                <p className="text-base text-gray-500 mt-1 max-w-sm">
+                <h2 className="text-xl font-semibold text-navy">Ask me anything about your finances</h2>
+                <p className="text-base text-muted-ink mt-1 max-w-sm">
                   I answer using your real data — not averages. I can also create expenses, invoices, and income records for you.
                 </p>
               </div>
@@ -543,11 +543,11 @@ export default function AdvisorPage() {
               ))}
               {loading && (
                 <div className="flex gap-3 justify-start">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
-                  <div className="rounded-2xl rounded-tl-sm bg-white border border-gray-200 px-4 py-3 shadow-sm">
-                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  <div className="rounded-2xl rounded-tl-sm bg-white border border-hairline px-4 py-3 shadow-sm">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-ink/60" />
                   </div>
                 </div>
               )}
@@ -558,13 +558,13 @@ export default function AdvisorPage() {
 
         {/* Suggested chips when there are messages */}
         {!isEmpty && (
-          <div className="border-t border-gray-100 bg-white px-4 md:px-6 py-2 flex gap-2 overflow-x-auto">
+          <div className="border-t border-hairline/70 bg-white px-4 md:px-6 py-2 flex gap-2 overflow-x-auto">
             {SUGGESTED_PROMPTS.slice(0, 4).map((p) => (
               <button
                 key={p.label}
                 onClick={() => sendMessage(p.label)}
                 disabled={loading}
-                className="shrink-0 rounded-full border border-gray-200 px-3 py-1 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="shrink-0 rounded-full border border-hairline px-3 py-1 text-sm text-muted-ink hover:bg-off-white transition-colors disabled:opacity-50"
               >
                 {p.label}
               </button>
@@ -573,7 +573,7 @@ export default function AdvisorPage() {
         )}
 
         {/* Input */}
-        <div className="border-t border-gray-200 bg-white px-4 md:px-6 py-4">
+        <div className="border-t border-hairline bg-white px-4 md:px-6 py-4">
           <div className="flex gap-3 items-end">
             <Textarea
               ref={textareaRef}
@@ -588,12 +588,12 @@ export default function AdvisorPage() {
             <label
               htmlFor="chat-file-upload"
               className={cn(
-                'cursor-pointer flex items-center justify-center h-11 w-11 shrink-0 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors',
+                'cursor-pointer flex items-center justify-center h-11 w-11 shrink-0 rounded-md border border-hairline hover:bg-off-white transition-colors',
                 loading && 'opacity-50 pointer-events-none'
               )}
               title="Upload PDF receipt or invoice"
             >
-              <Paperclip className="h-4 w-4 text-gray-500" />
+              <Paperclip className="h-4 w-4 text-muted-ink" />
             </label>
             <input
               id="chat-file-upload"

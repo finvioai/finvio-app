@@ -79,12 +79,12 @@ function KpiCard({ label, value, sub, icon: Icon, color }: {
   label: string; value: string; sub?: string; icon: React.ElementType; color: string
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="rounded-xl border border-hairline bg-white p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-          <p className="mt-1.5 text-2xl font-bold text-gray-900">{value}</p>
-          {sub && <p className="mt-0.5 text-xs text-gray-500">{sub}</p>}
+          <p className="text-xs font-medium text-muted-ink uppercase tracking-wide">{label}</p>
+          <p className="mt-1.5 text-2xl font-bold text-navy">{value}</p>
+          {sub && <p className="mt-0.5 text-xs text-muted-ink">{sub}</p>}
         </div>
         <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg', color)}>
           <Icon className="h-4 w-4" />
@@ -129,13 +129,13 @@ export default function RevenuePage() {
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-brand" />
       </div>
     )
   }
 
   if (!data) {
-    return <div className="p-6 text-center text-sm text-gray-500">Failed to load revenue data.</div>
+    return <div className="p-6 text-center text-sm text-muted-ink">Failed to load revenue data.</div>
   }
 
   const isSaaS = !data.businessModel || data.businessModel === 'saas' || data.businessModel === 'mixed'
@@ -153,8 +153,8 @@ export default function RevenuePage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Revenue</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <h1 className="text-2xl font-bold text-navy">Revenue</h1>
+        <p className="text-sm text-muted-ink mt-0.5">
           {isSaaS ? 'MRR, ARR, customers, and revenue sources' : 'Revenue, profit, and income sources'}
         </p>
       </div>
@@ -163,14 +163,14 @@ export default function RevenuePage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {isSaaS ? (
           <>
-            <KpiCard label="MRR" value={fmt(data.mrr)} sub="This month" icon={TrendingUp} color="bg-blue-50 text-blue-600" />
+            <KpiCard label="MRR" value={fmt(data.mrr)} sub="This month" icon={TrendingUp} color="bg-brand-tint text-brand" />
             <KpiCard label="ARR" value={fmt(data.arr)} sub="Annualised" icon={TrendingUp} color="bg-indigo-50 text-indigo-600" />
             <KpiCard label="Customers" value={String(data.activeCustomers)} sub="Active" icon={Users} color="bg-green-50 text-green-600" />
             <KpiCard label="Churn Rate" value={pct(data.churnRate)} sub="This month" icon={PercentIcon} color="bg-orange-50 text-orange-600" />
           </>
         ) : (
           <>
-            <KpiCard label="Revenue" value={fmt(data.totalRevenue ?? 0)} sub="This month" icon={DollarSign} color="bg-blue-50 text-blue-600" />
+            <KpiCard label="Revenue" value={fmt(data.totalRevenue ?? 0)} sub="This month" icon={DollarSign} color="bg-brand-tint text-brand" />
             <KpiCard label="Avg Monthly Revenue" value={fmt(data.avgMonthlyRevenue ?? 0)} sub="Last 3 months" icon={TrendingUp} color="bg-indigo-50 text-indigo-600" />
             <KpiCard label="Customers" value={String(data.activeCustomers)} sub="Active" icon={Users} color="bg-green-50 text-green-600" />
             <KpiCard label="Gross Profit" value={fmt(data.grossProfit ?? 0)} sub="This month" icon={(data.grossProfit ?? 0) >= 0 ? TrendingUp : TrendingDown} color={(data.grossProfit ?? 0) >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'} />
@@ -179,15 +179,15 @@ export default function RevenuePage() {
       </div>
 
       {/* Tabs + Chart */}
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <div className="flex gap-1 mb-5 border-b border-gray-100 pb-3">
+      <div className="rounded-xl border border-hairline bg-white p-5">
+        <div className="flex gap-1 mb-5 border-b border-hairline/70 pb-3">
           {(['trend', 'source', 'type', 'customers'] as ActiveTab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={cn(
                 'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                tab === t ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                tab === t ? 'bg-brand-tint text-brand' : 'text-muted-ink hover:text-navy/80 hover:bg-off-white'
               )}
             >
               {t === 'trend' ? trendLabel : t === 'source' ? 'By Source' : t === 'type' ? 'By Type' : 'Customers'}
@@ -197,9 +197,9 @@ export default function RevenuePage() {
 
         {tab === 'trend' && (
           <>
-            <p className="text-xs text-gray-500 mb-3">12-month {trendValueLabel.toLowerCase()} history</p>
+            <p className="text-xs text-muted-ink mb-3">12-month {trendValueLabel.toLowerCase()} history</p>
             {trendData.length === 0 || trendData.every(d => d.value === 0) ? (
-              <p className="text-sm text-gray-400 py-10 text-center">No revenue data yet</p>
+              <p className="text-sm text-muted-ink/60 py-10 text-center">No revenue data yet</p>
             ) : (
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={trendData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -216,9 +216,9 @@ export default function RevenuePage() {
 
         {tab === 'source' && (
           <>
-            <p className="text-xs text-gray-500 mb-3">Income by source this month</p>
+            <p className="text-xs text-muted-ink mb-3">Income by source this month</p>
             {pieData.length === 0 ? (
-              <p className="text-sm text-gray-400 py-10 text-center">No revenue data this month</p>
+              <p className="text-sm text-muted-ink/60 py-10 text-center">No revenue data this month</p>
             ) : (
               <div className="flex flex-col sm:flex-row items-center gap-6">
                 <ResponsiveContainer width={220} height={220}>
@@ -234,12 +234,12 @@ export default function RevenuePage() {
                 </ResponsiveContainer>
                 <div className="space-y-2 flex-1">
                   {pieData.map((entry) => (
-                    <div key={entry.key} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                    <div key={entry.key} className="flex items-center justify-between py-1.5 border-b border-hairline/40 last:border-0">
                       <div className="flex items-center gap-2">
                         <div className="h-2.5 w-2.5 rounded-full" style={{ background: SOURCE_COLORS[entry.key] ?? '#94a3b8' }} />
-                        <span className="text-sm text-gray-700">{entry.name}</span>
+                        <span className="text-sm text-navy/80">{entry.name}</span>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">{fmt(entry.value)}</span>
+                      <span className="text-sm font-medium text-navy">{fmt(entry.value)}</span>
                     </div>
                   ))}
                 </div>
@@ -255,9 +255,9 @@ export default function RevenuePage() {
           const total = typeData.reduce((s, d) => s + d.value, 0)
           return (
             <>
-              <p className="text-xs text-gray-500 mb-3">Revenue by type this month</p>
+              <p className="text-xs text-muted-ink mb-3">Revenue by type this month</p>
               {typeData.length === 0 ? (
-                <p className="text-sm text-gray-400 py-10 text-center">No revenue data this month</p>
+                <p className="text-sm text-muted-ink/60 py-10 text-center">No revenue data this month</p>
               ) : (
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                   <ResponsiveContainer width={220} height={220}>
@@ -273,14 +273,14 @@ export default function RevenuePage() {
                   </ResponsiveContainer>
                   <div className="space-y-2 flex-1">
                     {typeData.map((entry) => (
-                      <div key={entry.key} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                      <div key={entry.key} className="flex items-center justify-between py-1.5 border-b border-hairline/40 last:border-0">
                         <div className="flex items-center gap-2">
                           <div className="h-2.5 w-2.5 rounded-full" style={{ background: TYPE_COLORS[entry.key] ?? '#94a3b8' }} />
-                          <span className="text-sm text-gray-700">{entry.name}</span>
+                          <span className="text-sm text-navy/80">{entry.name}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-400">{total > 0 ? `${((entry.value / total) * 100).toFixed(0)}%` : '—'}</span>
-                          <span className="text-sm font-medium text-gray-900">{fmt(entry.value)}</span>
+                          <span className="text-xs text-muted-ink/60">{total > 0 ? `${((entry.value / total) * 100).toFixed(0)}%` : '—'}</span>
+                          <span className="text-sm font-medium text-navy">{fmt(entry.value)}</span>
                         </div>
                       </div>
                     ))}
@@ -293,31 +293,31 @@ export default function RevenuePage() {
 
         {tab === 'customers' && (
           <>
-            <p className="text-xs text-gray-500 mb-3">Customer list</p>
+            <p className="text-xs text-muted-ink mb-3">Customer list</p>
             {data.customers.length === 0 ? (
-              <p className="text-sm text-gray-400 py-10 text-center">No customers synced yet — connect Stripe to import customers.</p>
+              <p className="text-sm text-muted-ink/60 py-10 text-center">No customers synced yet — connect Stripe to import customers.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500">Name</th>
-                      <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500">Email</th>
-                      <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500">Status</th>
-                      <th className="text-left py-2 text-xs font-medium text-gray-500">Joined</th>
+                    <tr className="border-b border-hairline/70">
+                      <th className="text-left py-2 pr-4 text-xs font-medium text-muted-ink">Name</th>
+                      <th className="text-left py-2 pr-4 text-xs font-medium text-muted-ink">Email</th>
+                      <th className="text-left py-2 pr-4 text-xs font-medium text-muted-ink">Status</th>
+                      <th className="text-left py-2 text-xs font-medium text-muted-ink">Joined</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.customers.map((c) => (
-                      <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                        <td className="py-2.5 pr-4 font-medium text-gray-900">{c.name ?? '—'}</td>
-                        <td className="py-2.5 pr-4 text-gray-500">{c.email ?? '—'}</td>
+                      <tr key={c.id} className="border-b border-hairline/40 last:border-0 hover:bg-off-white">
+                        <td className="py-2.5 pr-4 font-medium text-navy">{c.name ?? '—'}</td>
+                        <td className="py-2.5 pr-4 text-muted-ink">{c.email ?? '—'}</td>
                         <td className="py-2.5 pr-4">
-                          <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', c.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600')}>
+                          <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', c.status === 'active' ? 'bg-green-50 text-green-700' : 'bg-off-white text-muted-ink')}>
                             {c.status ?? 'unknown'}
                           </span>
                         </td>
-                        <td className="py-2.5 text-gray-500">
+                        <td className="py-2.5 text-muted-ink">
                           {c.created_at ? new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}
                         </td>
                       </tr>

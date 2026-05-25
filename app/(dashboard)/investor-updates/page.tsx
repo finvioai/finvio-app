@@ -17,8 +17,8 @@ function fmtDate(iso: string) {
 }
 
 function statusColor(status: string | null) {
-  if (status === 'sent') return 'bg-blue-100 text-blue-700'
-  return 'bg-gray-100 text-gray-600'
+  if (status === 'sent') return 'bg-brand-tint text-brand'
+  return 'bg-off-white text-muted-ink'
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -105,8 +105,8 @@ export default function InvestorUpdatesPage() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Investor Updates</h1>
-          <p className="text-sm text-gray-500 mt-0.5">AI-generated drafts with your live metrics</p>
+          <h1 className="text-2xl font-bold text-navy">Investor Updates</h1>
+          <p className="text-sm text-muted-ink mt-0.5">AI-generated drafts with your live metrics</p>
         </div>
         <Button onClick={generate} disabled={generating}>
           {generating ? (
@@ -126,19 +126,19 @@ export default function InvestorUpdatesPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* List */}
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <p className="text-sm font-semibold text-gray-900">Past updates</p>
+        <div className="rounded-xl border border-hairline bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-hairline/70">
+            <p className="text-sm font-semibold text-navy">Past updates</p>
           </div>
 
           {loadingList ? (
             <div className="flex h-32 items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <Loader2 className="h-5 w-5 animate-spin text-brand" />
             </div>
           ) : updates.length === 0 ? (
             <div className="p-6 text-center">
-              <p className="text-sm text-gray-400">No updates yet.</p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-sm text-muted-ink/60">No updates yet.</p>
+              <p className="text-xs text-muted-ink/60 mt-1">
                 Click &quot;Generate new update&quot; to create your first draft.
               </p>
             </div>
@@ -149,13 +149,13 @@ export default function InvestorUpdatesPage() {
                   key={u.id}
                   onClick={() => selectUpdate(u)}
                   className={cn(
-                    'w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-start justify-between gap-2',
-                    selected?.id === u.id && 'bg-blue-50'
+                    'w-full text-left px-4 py-3 hover:bg-off-white transition-colors flex items-start justify-between gap-2',
+                    selected?.id === u.id && 'bg-brand-tint'
                   )}
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{u.period}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                    <p className="text-sm font-medium text-navy truncate">{u.period}</p>
+                    <p className="text-xs text-muted-ink/60 mt-0.5 flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {u.created_at ? fmtDate(u.created_at) : '—'}
                     </p>
@@ -168,7 +168,7 @@ export default function InvestorUpdatesPage() {
                   </div>
                   <ChevronRight className={cn(
                     'h-4 w-4 shrink-0 mt-0.5',
-                    selected?.id === u.id ? 'text-blue-500' : 'text-gray-300'
+                    selected?.id === u.id ? 'text-brand/80' : 'text-muted-ink/40'
                   )} />
                 </button>
               ))}
@@ -177,24 +177,24 @@ export default function InvestorUpdatesPage() {
         </div>
 
         {/* Editor */}
-        <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white flex flex-col min-h-[500px]">
+        <div className="lg:col-span-2 rounded-xl border border-hairline bg-white flex flex-col min-h-[500px]">
           {!selected ? (
             <div className="flex flex-1 items-center justify-center p-12 text-center">
               <div>
-                <Sparkles className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm font-medium text-gray-500">
+                <Sparkles className="h-10 w-10 text-muted-ink/40 mx-auto mb-3" />
+                <p className="text-sm font-medium text-muted-ink">
                   Select an update or generate a new one
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-muted-ink/60 mt-1">
                   Finvio will draft it using your live metrics
                 </p>
               </div>
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-hairline/70">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{selected.period}</p>
+                  <p className="text-sm font-semibold text-navy">{selected.period}</p>
                   <span className={cn(
                     'mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium',
                     statusColor(selected.status)
@@ -221,7 +221,7 @@ export default function InvestorUpdatesPage() {
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="flex-1 w-full resize-none p-5 text-sm text-gray-800 font-mono leading-relaxed focus:outline-none rounded-b-xl"
+                className="flex-1 w-full resize-none p-5 text-sm text-navy font-mono leading-relaxed focus:outline-none rounded-b-xl"
                 style={{ minHeight: '420px' }}
                 placeholder="Your investor update will appear here…"
               />
