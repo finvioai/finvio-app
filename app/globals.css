@@ -129,4 +129,81 @@
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
   }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ─── Landing page design tokens ─────────────────────────────────────────── */
+
+@theme inline {
+  --color-navy: var(--lp-navy);
+  --color-navy-foreground: var(--lp-navy-foreground);
+  --color-ink: var(--lp-ink);
+  --color-off-white: var(--lp-off-white);
+  --color-hairline: var(--lp-hairline);
+  --color-muted-ink: var(--lp-muted-ink);
+  --color-brand: var(--lp-brand);
+  --color-brand-soft: var(--lp-brand-soft);
+  --color-brand-tint: var(--lp-brand-tint);
+}
+
+:root {
+  --lp-navy: oklch(0.26 0.09 262);
+  --lp-navy-foreground: oklch(0.985 0.003 247);
+  --lp-ink: oklch(0.16 0.04 264);
+  --lp-off-white: oklch(0.972 0.012 250);
+  --lp-hairline: oklch(0.26 0.09 262 / 0.1);
+  --lp-muted-ink: oklch(0.48 0.04 258);
+  --lp-brand: oklch(0.6 0.19 258);
+  --lp-brand-soft: oklch(0.72 0.14 250);
+  --lp-brand-tint: oklch(0.95 0.04 255);
+}
+
+/* Landing scope — overrides --accent to brand blue for landing sections only */
+[data-landing] {
+  --accent: oklch(0.6 0.19 258);
+  --accent-foreground: oklch(0.985 0.003 247);
+}
+
+@layer utilities {
+  .font-serif-italic {
+    font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+  }
+  .font-mono-eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .bg-hero-radial {
+    background:
+      radial-gradient(60% 50% at 50% 0%, oklch(0.6 0.19 258 / 0.18) 0%, transparent 70%),
+      radial-gradient(40% 40% at 85% 20%, oklch(0.72 0.14 250 / 0.18) 0%, transparent 70%),
+      radial-gradient(50% 60% at 10% 30%, oklch(0.26 0.09 262 / 0.08) 0%, transparent 70%),
+      linear-gradient(180deg, oklch(0.95 0.04 255) 0%, oklch(1 0 0) 60%);
+  }
+  .bg-brand-gradient {
+    background: linear-gradient(135deg, oklch(0.6 0.19 258) 0%, oklch(0.26 0.09 262) 100%);
+  }
+  .text-brand-gradient {
+    background: linear-gradient(135deg, oklch(0.6 0.19 258) 0%, oklch(0.72 0.14 250) 60%, oklch(0.26 0.09 262) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-brand-glow {
+    box-shadow: 0 20px 60px -20px oklch(0.6 0.19 258 / 0.45);
+  }
+}
+
+@keyframes lp-reveal {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-reveal {
+  animation: lp-reveal 0.7s cubic-bezier(0.19, 1, 0.22, 1) both;
 }
