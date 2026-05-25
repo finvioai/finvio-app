@@ -31,7 +31,7 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  const publicPaths = ['/login', '/signup', '/auth']
+  const publicPaths = ['/login', '/signup', '/auth', '/features', '/pricing', '/faq', '/insights']
 
   const isPublic =
     pathname === '/' ||
