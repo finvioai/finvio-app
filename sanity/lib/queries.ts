@@ -16,6 +16,9 @@ const CARD_FIELDS = groq`
 
 export const PER_PAGE = 12
 
+const hasSanityConfig = () =>
+  !!(process.env.SANITY_PROJECT_ID || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID)
+
 export async function getInsights({
   category,
   q,
@@ -25,7 +28,7 @@ export async function getInsights({
   q?: string | null
   page?: number
 } = {}): Promise<{ insights: SanityInsightCard[]; total: number; pages: number }> {
-  if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) {
+  if (!hasSanityConfig()) {
     return { insights: [], total: 0, pages: 0 }
   }
 
@@ -57,7 +60,7 @@ export async function getInsights({
 }
 
 export async function getInsightBySlug(slug: string): Promise<SanityInsight | null> {
-  if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return null
+  if (!hasSanityConfig()) return null
 
   return client.fetch<SanityInsight | null>(
     groq`*[_type == "insight" && slug.current == $slug && status == "published"][0]{
@@ -94,7 +97,7 @@ export async function getInsightBySlug(slug: string): Promise<SanityInsight | nu
 }
 
 export async function getAllInsightSlugs(): Promise<string[]> {
-  if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return []
+  if (!hasSanityConfig()) return []
 
   const slugs = await client.fetch<{ slug: string }[]>(
     groq`*[_type == "insight" && status == "published"]{"slug": slug.current}`,
@@ -105,7 +108,7 @@ export async function getAllInsightSlugs(): Promise<string[]> {
 }
 
 export async function getCategories(): Promise<SanityCategory[]> {
-  if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) return []
+  if (!hasSanityConfig()) return []
 
   return client.fetch<SanityCategory[]>(
     groq`*[_type == "category"] | order(title asc){title, "slug": slug.current}`,
