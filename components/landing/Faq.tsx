@@ -14,7 +14,7 @@ const faqs = [
   },
   {
     q: 'Is my financial data secure?',
-    a: "Finvio is SOC 2 Type II certified, uses 256-bit encryption at rest and in transit, and never trains models on your data.",
+    a: "Finvio uses 256-bit encryption at rest and in transit, and never trains models on your data.",
   },
   {
     q: 'Can the AI Advisor act on my behalf?',
@@ -64,6 +64,22 @@ export function Faq({ showHeader = true }: { showHeader?: boolean }) {
               )}
             </div>
           ))}
+        </div>
+
+        <div className="mt-12 rounded-2xl border border-hairline bg-background p-8">
+          <h3 className="text-lg font-bold text-navy">Still have a question?</h3>
+          <p className="mt-2 text-sm leading-relaxed text-muted-ink">
+            Can&apos;t find the answer you&apos;re looking for? Send us an email and we&apos;ll
+            get back to you as soon as possible.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <a
+              href="mailto:hello@finvio.ai"
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-navy px-6 text-sm font-semibold text-navy-foreground transition-colors hover:bg-ink"
+            >
+              Send email
+            </a>
+          </div>
         </div>
       </div>
     </section>

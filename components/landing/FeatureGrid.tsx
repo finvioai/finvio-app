@@ -75,15 +75,38 @@ export function FeatureGrid({ showHeader = true }: { showHeader?: boolean }) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl bg-hairline ring-1 ring-hairline sm:grid-cols-2 lg:grid-cols-3">
+        {/* Mobile: horizontal snap-scroll carousel */}
+        <div className="sm:hidden">
+          <div
+            className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4"
+            style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+          >
+            {features.map(({ icon: Icon, title, desc }, i) => (
+              <div
+                key={title}
+                className="w-[78vw] max-w-[300px] flex-shrink-0 snap-start rounded-2xl border border-hairline bg-background p-6"
+              >
+                <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-brand-gradient text-navy-foreground shadow-brand-glow">
+                  <Icon className="size-4" strokeWidth={1.75} />
+                </div>
+                <span className="font-mono-eyebrow text-muted-ink/40">{String(i + 1).padStart(2, '0')}</span>
+                <h3 className="mt-2 text-sm font-bold text-navy">{title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-muted-ink">{desc}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-center font-mono-eyebrow text-muted-ink/40">swipe to explore</p>
+        </div>
+
+        {/* Desktop: original grid */}
+        <div className="hidden sm:grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-hairline ring-1 ring-hairline lg:grid-cols-3">
           {features.map(({ icon: Icon, title, desc }, i) => {
-            // Last item spans full row when it would otherwise leave empty cells
             const isLastLonely = i === features.length - 1 && features.length % 3 === 1
             return (
               <div
                 key={title}
                 className={`group relative bg-background p-7 transition-colors hover:bg-brand-tint/60 ${
-                  isLastLonely ? 'sm:col-span-2 lg:col-span-3' : ''
+                  isLastLonely ? 'lg:col-span-3' : ''
                 }`}
               >
                 <div className="mb-5 flex size-11 items-center justify-center rounded-lg bg-brand-gradient text-navy-foreground shadow-brand-glow">

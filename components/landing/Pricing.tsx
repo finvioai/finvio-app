@@ -1,39 +1,5 @@
-import Link from 'next/link'
-import { Check } from 'lucide-react'
-
-const tiers = [
-  {
-    name: 'Starter',
-    price: '$0',
-    suffix: '/mo',
-    desc: 'Single-member LLCs, freelancers, solo operators.',
-    features: ['Free LLC tax submission', '1 bank connection', 'AI revenue analytics', 'Invoices & expenses', 'Email support'],
-    cta: 'Get Started',
-    featured: false,
-  },
-  {
-    name: 'Growth',
-    price: '$149',
-    suffix: '/mo',
-    desc: 'Fast-growing startups, agencies, multi-entity operators.',
-    features: ['Up to 3 entities', 'Advanced AI Advisor', 'Real-time tax nexus', 'Forecasting & scenarios', 'Unlimited integrations', 'Priority support'],
-    cta: 'Start Growth',
-    featured: true,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    suffix: '',
-    desc: 'Larger organizations with dedicated treasury operations.',
-    features: ['Unlimited entities', 'Custom AI model training', 'Designated finance ops lead', 'Audit-ready reporting', 'SOC 2 evidence sharing'],
-    cta: 'Contact Sales',
-    featured: false,
-  },
-]
-
 export function Pricing({
   showHeader = true,
-  description,
 }: {
   showHeader?: boolean
   description?: string
@@ -48,53 +14,26 @@ export function Pricing({
               Standardized tiers.<br />
               <span className="font-serif-italic">No hidden fees.</span>
             </h2>
-            <p className="mt-4 text-muted-ink">
-              {description ?? 'Engineered to scale with your entity’s complexity.'}
-            </p>
           </div>
         )}
 
-        <div className="grid gap-6 md:grid-cols-3 md:items-start">
-          {tiers.map((t) => (
-            <div
-              key={t.name}
-              className={`relative flex flex-col rounded-2xl p-8 transition-shadow ${
-                t.featured
-                  ? 'border-2 border-navy bg-background shadow-2xl shadow-navy/10 md:scale-[1.04]'
-                  : 'border border-hairline bg-background hover:shadow-xl'
-              }`}
-            >
-              {t.featured && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-navy px-3 py-1 font-mono-eyebrow text-navy-foreground">
-                  Most Popular
-                </span>
-              )}
-              <div className="font-mono-eyebrow text-muted-ink">{t.name}</div>
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="text-5xl font-extrabold text-navy">{t.price}</span>
-                <span className="text-lg text-muted-ink">{t.suffix}</span>
-              </div>
-              <p className="mt-4 text-sm text-muted-ink">{t.desc}</p>
-              <ul className="mt-8 flex-1 space-y-3">
-                {t.features.map((f) => (
-                  <li key={f} className="flex items-start gap-3 text-sm text-navy">
-                    <Check className="mt-0.5 size-4 shrink-0 text-brand" strokeWidth={2.5} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/signup"
-                className={`mt-10 inline-flex h-12 items-center justify-center rounded-lg text-sm font-bold transition-colors ${
-                  t.featured
-                    ? 'bg-navy text-navy-foreground hover:bg-ink'
-                    : 'border border-hairline text-navy hover:bg-off-white'
-                }`}
-              >
-                {t.cta}
-              </Link>
-            </div>
-          ))}
+        <div className="mx-auto max-w-xl rounded-2xl border border-hairline bg-background p-12 text-center shadow-sm">
+          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand/10">
+            <svg className="h-7 w-7 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-extrabold text-navy">Pricing announced at launch.</h3>
+          <p className="mt-4 text-pretty text-muted-ink">
+            We&apos;re in private beta. Pricing will be announced when we open to the public.
+            Early waitlist members get priority access and founding rates.
+          </p>
+          <a
+            href="mailto:hello@finvio.ai"
+            className="mt-8 inline-flex h-11 items-center justify-center rounded-lg border border-hairline px-6 text-sm font-semibold text-navy transition-colors hover:bg-off-white"
+          >
+            Contact us — hello@finvio.ai
+          </a>
         </div>
       </div>
     </section>

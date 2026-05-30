@@ -27,18 +27,18 @@ export function Hero() {
               Start Free — Connect Your Bank
             </Link>
             <a
-              href="#features"
+              href="mailto:hello@finvio.ai"
               className="h-12 inline-flex items-center justify-center rounded-lg border border-hairline bg-background/80 px-8 text-sm font-bold text-navy backdrop-blur transition-colors hover:bg-off-white"
             >
               Talk to Sales
             </a>
           </div>
           <p className="mt-5 font-mono-eyebrow text-muted-ink/70">
-            Form 5472 ready · SOC 2 Type II · Bank-grade encryption
+            FORM 5472 SUPPORT • ENCRYPTED DATA • SECURE BANK CONNECTIONS
           </p>
         </div>
 
-        <div className="animate-reveal mt-20" style={{ animationDelay: '200ms' }}>
+        <div className="animate-reveal mt-20 hidden sm:block" style={{ animationDelay: '200ms' }}>
           <DashboardMockup />
         </div>
       </div>
