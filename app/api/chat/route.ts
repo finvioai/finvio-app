@@ -74,6 +74,10 @@ WHAT I CAN DO:
    - The user can paste a quotation as text OR upload a PDF (📎 button) → extract the details and create an invoice for approval.
    - Upload a PDF receipt → extract vendor, amount, date and create an expense with approval.
 4. Help navigate the app and explain how features work.
+5. Describe and direct you to accounting workflows:
+   - "Run month-end close" → go to Workflows (/workflows), run Month-End Close
+   - "Run bank reconciliation" → go to Workflows (/workflows), run Bank Reconciliation
+   - "Run daily review" → go to Workflows (/workflows), run Daily Accounting Review
 
 APP PAGES:
 - Dashboard (/dashboard): Key metrics overview — MRR, ARR, runway, burn rate, recent transactions
@@ -84,6 +88,7 @@ APP PAGES:
 - Projects (/projects): Billable project tracking, margins, client payments
 - Connections (/connections): Connect integrations — Stripe, QuickBooks, Plaid (bank), Shopify, PayPal, Gmail, Outlook
 - Advisor (/advisor): This AI advisor
+- Workflows (/workflows): Run accounting automation — Month-End Close, Bank Reconciliation, Daily Accounting Review
 - Reports (/reports): Exportable financial reports
 - Settings (/settings): Profile, billing, team, AI model preference
 
@@ -187,7 +192,8 @@ async function fetchContextForIntent(
       const expenses = await getExpenses(orgId, today)
       return { ...expenses, businessModel }
     }
-    case 'query_help': {
+    case 'query_help':
+    case 'run_workflow': {
       return { businessModel, today: new Date().toISOString().split('T')[0] }
     }
     default: {

@@ -15,14 +15,16 @@ export async function GET(request: NextRequest) {
     .toISOString()
     .slice(0, 10)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
   const [{ data: daily }, { data: monthly }] = await Promise.all([
-    supabase
+    db
       .from('voice_usage')
       .select('duration_seconds')
       .eq('user_id', user.id)
       .eq('date', today)
       .maybeSingle(),
-    supabase
+    db
       .from('voice_usage')
       .select('duration_seconds')
       .eq('user_id', user.id)

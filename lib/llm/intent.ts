@@ -67,6 +67,18 @@ const KEYWORD_MAP: { intent: ChatIntent; patterns: RegExp[] }[] = [
     ],
   },
   {
+    intent: 'run_workflow',
+    patterns: [
+      /run (month.?end|monthly) close/i,
+      /run (bank )?reconciliation/i,
+      /run daily (accounting|review)/i,
+      /(start|execute|trigger).{0,20}workflow/i,
+      /what workflows?.{0,20}(need|should|available|can)/i,
+      /close (the |this |)month/i,
+      /automat.{0,20}(accounting|bookkeeping)/i,
+    ],
+  },
+  {
     intent: 'create_expense',
     patterns: [
       /(add|log|record|create|new).{0,40}expense/i,       // "add $20 monthly expense for X"
@@ -177,7 +189,7 @@ export async function detectIntent(
   try {
     const adapter = getLLMAdapter(provider as 'openai' | 'anthropic', model)
     const result = await adapter.extractStructuredOutput<{ intent: ChatIntent }>(
-      `Classify this user message into exactly one of these intents: query_runway, query_mrr, query_revenue, query_profit, query_project, query_burn, query_pnl, query_forecast, query_customers, query_expenses, query_help, create_expense, create_invoice, add_income, confirm_action, unknown.\n\nRules:\n- Use confirm_action ONLY for short affirmative replies (e.g. "yes", "ok", "sure", "correct", "proceed", "go ahead"). NEVER use confirm_action if the message contains a dollar amount or describes a new transaction.\n- Use create_expense when the user wants to record any cost, payment, bill, or subscription — regardless of phrasing.\n- Use create_invoice when the user wants to create an invoice OR convert a quotation/quote/estimate into an invoice.\n- Use add_income when the user wants to RECORD a payment they received.\n- Use query_expenses when the user asks about their expenses, spending, or costs for a period.\n- Use query_help when the user asks how to use the app, where to find something, or what a feature does.\n- Use query_mrr ONLY when the user explicitly says "MRR" or "recurring revenue".\n- Use query_revenue for general revenue questions.\n- Use query_profit for profit/margin questions.\n- Use query_project to ask about project status or summaries.\n- Use query_forecast for forecasts/projections.\n\nMessage: "${message}"`,
+      `Classify this user message into exactly one of these intents: query_runway, query_mrr, query_revenue, query_profit, query_project, query_burn, query_pnl, query_forecast, query_customers, query_expenses, query_help, run_workflow, create_expense, create_invoice, add_income, confirm_action, unknown.\n\nRules:\n- Use confirm_action ONLY for short affirmative replies (e.g. "yes", "ok", "sure", "correct", "proceed", "go ahead"). NEVER use confirm_action if the message contains a dollar amount or describes a new transaction.\n- Use run_workflow when the user wants to run or trigger a workflow (e.g. "run month-end close", "run reconciliation", "run daily review", "close the month", "automate accounting").\n- Use create_expense when the user wants to record any cost, payment, bill, or subscription — regardless of phrasing.\n- Use create_invoice when the user wants to create an invoice OR convert a quotation/quote/estimate into an invoice.\n- Use add_income when the user wants to RECORD a payment they received.\n- Use query_expenses when the user asks about their expenses, spending, or costs for a period.\n- Use query_help when the user asks how to use the app, where to find something, or what a feature does.\n- Use query_mrr ONLY when the user explicitly says "MRR" or "recurring revenue".\n- Use query_revenue for general revenue questions.\n- Use query_profit for profit/margin questions.\n- Use query_project to ask about project status or summaries.\n- Use query_forecast for forecasts/projections.\n\nMessage: "${message}"`,
       { intent: 'string' }
     )
     return result.intent ?? 'unknown'

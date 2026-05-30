@@ -134,6 +134,7 @@ export type ChatIntent =
   | 'create_expense'
   | 'create_invoice'
   | 'add_income'
+  | 'run_workflow'
   | 'confirm_action'
   | 'unknown'
 
@@ -372,4 +373,41 @@ export interface ProjectSummary extends Project {
   collected: number    // sum of income transactions linked to this project
   expenses: number     // sum of expense transactions linked to this project
   outstanding: number  // budget - collected (null budget → null)
+}
+
+// ============================================================
+// Workflow Automation Types
+// ============================================================
+
+export type WorkflowRunStatus = 'completed' | 'completed_with_warnings' | 'failed'
+export type StepStatus = 'pending' | 'running' | 'success' | 'warning' | 'failed' | 'approval_required'
+
+export interface WorkflowStepState {
+  id: string
+  name: string
+  status: StepStatus
+  message?: string
+  warnings?: string[]
+  data?: Record<string, unknown>
+}
+
+export interface WorkflowRunRecord {
+  id: string
+  workflow_id: string
+  workflow_name: string
+  status: WorkflowRunStatus | 'running'
+  started_at: string
+  completed_at: string | null
+  summary_json: {
+    steps: WorkflowStepState[]
+    summary: string
+    totalWarnings: number
+  } | null
+}
+
+export interface WorkflowRecommendation {
+  workflowId: string
+  workflowName: string
+  reason: string
+  priority: 'high' | 'medium' | 'low'
 }

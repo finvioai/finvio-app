@@ -23,6 +23,7 @@ import {
   FolderOpen,
   BookOpen,
   Scale,
+  Zap,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -42,6 +43,7 @@ const primaryItems = [
   { href: '/expenses',     label: 'Expenses',     icon: Receipt },
   { href: '/invoices',     label: 'Invoices',     icon: FileText },
   { href: '/reports',      label: 'Reports',      icon: BarChart3 },
+  { href: '/workflows',    label: 'Workflows',    icon: Zap },
   { href: '/balance-sheet', label: 'Balance Sheet', icon: Scale },
   { href: '/projects',     label: 'Projects',     icon: FolderOpen },
   { href: '/advisor',      label: 'AI Advisor',   icon: Bot },
