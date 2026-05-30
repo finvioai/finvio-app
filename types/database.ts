@@ -1017,8 +1017,8 @@ export type Database = {
           project_id: string | null
           raw_metadata: Json | null
           receipt_url: string | null
-          recurrence: string | null
           reconciled_with: string | null
+          recurrence: string | null
           revenue_type: string | null
           source: string
           source_account: string | null
@@ -1052,8 +1052,8 @@ export type Database = {
           project_id?: string | null
           raw_metadata?: Json | null
           receipt_url?: string | null
-          recurrence?: string | null
           reconciled_with?: string | null
+          recurrence?: string | null
           revenue_type?: string | null
           source: string
           source_account?: string | null
@@ -1087,8 +1087,8 @@ export type Database = {
           project_id?: string | null
           raw_metadata?: Json | null
           receipt_url?: string | null
-          recurrence?: string | null
           reconciled_with?: string | null
+          recurrence?: string | null
           revenue_type?: string | null
           source?: string
           source_account?: string | null
@@ -1204,30 +1204,48 @@ export type Database = {
         }
         Relationships: []
       }
-      voice_usage: {
+      workflow_runs: {
         Row: {
-          user_id: string
-          date: string
-          duration_seconds: number
+          completed_at: string | null
+          created_by: string | null
+          id: string
+          org_id: string
+          started_at: string
+          status: string
+          summary_json: Json | null
+          workflow_id: string
+          workflow_name: string
         }
         Insert: {
-          user_id: string
-          date?: string
-          duration_seconds?: number
+          completed_at?: string | null
+          created_by?: string | null
+          id?: string
+          org_id: string
+          started_at?: string
+          status?: string
+          summary_json?: Json | null
+          workflow_id: string
+          workflow_name: string
         }
         Update: {
-          user_id?: string
-          date?: string
-          duration_seconds?: number
+          completed_at?: string | null
+          created_by?: string | null
+          id?: string
+          org_id?: string
+          started_at?: string
+          status?: string
+          summary_json?: Json | null
+          workflow_id?: string
+          workflow_name?: string
         }
         Relationships: [
           {
-            foreignKeyName: "voice_usage_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "workflow_runs_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
     }

@@ -34,14 +34,16 @@ export async function POST(request: NextRequest) {
     .toISOString()
     .slice(0, 10)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any
   const [{ data: daily }, { data: monthly }] = await Promise.all([
-    supabase
+    db
       .from('voice_usage')
       .select('duration_seconds')
       .eq('user_id', user.id)
       .eq('date', today)
       .maybeSingle(),
-    supabase
+    db
       .from('voice_usage')
       .select('duration_seconds')
       .eq('user_id', user.id)
@@ -121,7 +123,7 @@ export async function POST(request: NextRequest) {
     // ── Log duration ──────────────────────────────────────────────────────
     const actualSeconds = result.duration ?? 0
     if (actualSeconds > 0) {
-      await supabase.from('voice_usage').upsert(
+      await db.from('voice_usage').upsert(
         { user_id: user.id, date: today, duration_seconds: dailyUsed + actualSeconds },
         { onConflict: 'user_id,date' }
       )
