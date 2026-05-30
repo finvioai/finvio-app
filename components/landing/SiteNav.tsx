@@ -40,10 +40,10 @@ export function SiteNav() {
             Login
           </Link>
           <Link
-            href="/signup"
-            className="rounded-md bg-navy px-4 py-2 text-sm font-semibold text-navy-foreground ring-1 ring-navy/10 shadow-sm transition-colors hover:bg-ink"
+            href="/waitlist"
+            className="bg-brand-gradient shadow-brand-glow hidden rounded-md px-4 py-2 text-sm font-semibold text-navy-foreground transition-transform active:scale-[0.98] sm:inline-flex"
           >
-            Open Account
+            Join Waitlist
           </Link>
           <button
             className="md:hidden p-1.5 text-muted-ink hover:text-navy"
@@ -73,6 +73,13 @@ export function SiteNav() {
             onClick={() => setOpen(false)}
           >
             Login
+          </Link>
+          <Link
+            href="/waitlist"
+            className="block text-sm font-semibold text-brand py-1"
+            onClick={() => setOpen(false)}
+          >
+            Join Waitlist →
           </Link>
         </div>
       )}
