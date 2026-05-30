@@ -34,9 +34,9 @@ export function SiteFooter() {
           </div>
         </div>
         <div className="mt-20 flex flex-col items-center justify-between gap-4 border-t border-navy-foreground/10 pt-10 md:flex-row">
-          <p className="font-mono-eyebrow text-navy-foreground/40">© 2026 Finvio Technologies Inc.</p>
+          <p className="font-mono-eyebrow text-navy-foreground/40">© 2026 Finvio LLC</p>
           <div className="flex gap-3">
-            <span className="rounded border border-navy-foreground/15 px-2 py-1 font-mono-eyebrow text-navy-foreground/50">SOC 2 Type II</span>
+            <span className="rounded border border-navy-foreground/15 px-2 py-1 font-mono-eyebrow text-navy-foreground/50">Encrypted Data</span>
             <span className="rounded border border-navy-foreground/15 px-2 py-1 font-mono-eyebrow text-navy-foreground/50">256-bit Encryption</span>
           </div>
         </div>

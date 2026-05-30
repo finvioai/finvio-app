@@ -28,7 +28,7 @@ export function FinalCta() {
               Open an Account
             </Link>
             <a
-              href="#features"
+              href="mailto:hello@finvio.ai"
               className="h-12 inline-flex items-center justify-center rounded-lg border border-navy-foreground/20 px-8 text-sm font-bold text-navy-foreground hover:bg-navy-foreground/5"
             >
               Talk to Sales
