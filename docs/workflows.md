@@ -1,5 +1,61 @@
 # Workflow Automation System
 
+## Purpose
+
+Workflows are one-click automations that replace repetitive, error-prone manual accounting tasks. Instead of a bookkeeper navigating multiple screens, cross-referencing spreadsheets, and typing summaries, a workflow runs all those sub-tasks in sequence, records every result, and surfaces only the things that need human attention (warnings, anomalies, unreconciled items).
+
+**Why they exist:** Small finance teams spend 2–4 hours per month on tasks like month-end close, bank reconciliation, and daily transaction review. Workflows reduce that to a 10–30 second click, with a full audit trail saved automatically.
+
+**What they are NOT:** Workflows do not modify or delete data automatically. Every step either reads data and reports findings, or writes a snapshot/summary record. Steps that detect problems (uncategorized transactions, overdue invoices, failed syncs) surface warnings so the user can take action — they do not auto-fix.
+
+---
+
+## Current Workflows
+
+### Month-End Close (`month-end`)
+**Business purpose:** Closes out a calendar month so financial reports are accurate and complete.
+
+At the start of each month, finance teams need to verify that all transactions are categorized, reconcile them against payment provider payouts, and produce a snapshot of key metrics (MRR, ARR, burn rate, P&L). Without this, monthly reports are unreliable and tax prep becomes painful. This workflow does all of that in one run.
+
+**Steps and what they do:**
+| Step | Business action |
+|------|----------------|
+| Check uncategorized transactions | Finds transactions not yet reviewed/categorized. Warns if any remain — these must be resolved before the month is truly closed. |
+| Run reconciliation engine | Matches bank/Stripe transactions against invoices and payouts. Flags duplicates, unmatched items, and discrepancies. |
+| Generate monthly snapshot | Writes a `monthly_snapshots` record with MRR, ARR, cash balance, burn rate, and P&L totals — the source of truth for monthly reports. |
+| Generate P&L summary | Lists the top 3 revenue and expense categories, giving a plain-language financial summary for the month. |
+
+---
+
+### Bank Reconciliation (`bank-reconciliation`)
+**Business purpose:** Verifies that every transaction in the system is matched and accounted for.
+
+Reconciliation ensures the books match reality: every bank/Stripe transaction maps to an invoice or known payout, with no duplicates or ghost entries. This should run at least weekly for active businesses. Unreconciled transactions cause cash flow figures to be inaccurate.
+
+**Steps and what they do:**
+| Step | Business action |
+|------|----------------|
+| Find unreconciled transactions | Counts all `is_reconciled=false` transactions across all time — the baseline before running the engine. |
+| Run reconciliation engine | Calls the reconciliation logic to match payouts, invoices, and flag duplicates. |
+| Generate reconciliation summary | Re-counts unreconciled after the engine ran. Reports how many were resolved and how many still need manual attention. |
+
+---
+
+### Daily Accounting Review (`daily-accounting`)
+**Business purpose:** A quick daily health check on the accounting system — data sync, outstanding items, overdue invoices.
+
+This is designed to be run each morning. It surfaces anything that drifted overnight: failed data syncs from Stripe/banks, transactions that came in uncategorized, and invoices that have gone past due. Think of it as a daily standup for the finance system.
+
+**Steps and what they do:**
+| Step | Business action |
+|------|----------------|
+| Review recent sync activity | Checks `sync_logs` for the last 24 hours — reports which providers synced, how many records were imported, and any errors. A failed sync means data may be missing. |
+| Check uncategorized transactions | Counts all unreviewed transactions across all time. A growing backlog means financial reports are becoming less accurate. |
+| Check overdue invoices | Lists invoices in `sent` or `overdue` status with a past due date — these represent unpaid revenue that may need follow-up. |
+| Generate daily summary | Marks the review complete with today's date and a plain-language status for the business. |
+
+---
+
 ## Overview
 
 Finvio's workflow system lets users run predefined accounting operations as tracked, audited jobs. Each workflow consists of sequential steps; the framework handles execution, error handling, warning accumulation, and history.
@@ -89,44 +145,6 @@ POST /api/workflows/run
 ```
 
 Steps access parameters via `ctx.parameters.month` etc. The `WorkflowDefinition.parameters` array declares the schema for UI rendering.
-
----
-
-## Current Workflows
-
-### Month-End Close (`month-end`)
-**Category:** accounting | **Duration:** ~30 seconds  
-**Parameter:** `month` (YYYY-MM, defaults to previous month)
-
-| Step | What it does |
-|------|-------------|
-| Check uncategorized transactions | Counts `is_reviewed=false` transactions in the month — warns if any exist |
-| Run reconciliation engine | Calls `reconcileOrgTransactions()` — matches payouts, invoices, flags duplicates |
-| Generate monthly snapshot | Writes/updates `monthly_snapshots` row with MRR, ARR, cash, burn, P&L totals |
-| Generate P&L summary | Surfaces top 3 revenue and expense categories for the month |
-
----
-
-### Bank Reconciliation (`bank-reconciliation`)
-**Category:** reconciliation | **Duration:** ~15 seconds
-
-| Step | What it does |
-|------|-------------|
-| Find unreconciled transactions | Counts `is_reconciled=false` transactions across all time |
-| Run reconciliation engine | Calls `reconcileOrgTransactions()` |
-| Generate reconciliation summary | Re-counts unreconciled after engine ran; reports what remains |
-
----
-
-### Daily Accounting Review (`daily-accounting`)
-**Category:** accounting | **Duration:** ~10 seconds
-
-| Step | What it does |
-|------|-------------|
-| Review recent sync activity | Queries `sync_logs` for the last 24 hours — reports providers, records, errors |
-| Check uncategorized transactions | Counts all `is_reviewed=false` transactions |
-| Check overdue invoices | Queries invoices in `sent`/`overdue` status with `due_date < today` |
-| Generate daily summary | Marks review complete with today's date |
 
 ---
 
