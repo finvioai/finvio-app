@@ -56,6 +56,55 @@ This is designed to be run each morning. It surfaces anything that drifted overn
 
 ---
 
+### Categorize Transactions (`categorize-transactions`)
+**Business purpose:** Actually categorize the uncategorized transactions that every other workflow flags but none resolve.
+
+Correct categorization is the foundation of every financial report. P&L accuracy, tax prep, budget vs. actual — all depend on transactions being in the right category. This workflow runs the full three-layer categorization stack (org overrides → category rules → AI fallback) against every unreviewed transaction, marks them as reviewed, and reports what still needs manual attention.
+
+**Steps and what they do:**
+| Step | Business action |
+|------|----------------|
+| Scan uncategorized transactions | Counts all transactions where `is_reviewed=false`. If zero, exits cleanly. |
+| Apply category rules | Pre-fetches all org overrides + org-specific rules + system-wide rules in one round-trip. Applies them in memory to all uncategorized transactions. Bulk-updates matches with `category_method='rule'` and marks as reviewed. Processes up to 200 transactions per run. |
+| AI-assisted categorization | For transactions that didn't match any rule, calls the LLM categorizer (same model as the chat advisor). Processes up to 40 transactions concurrently. Marks results with `category_method='ai'`. |
+| Categorization summary | Re-counts still-uncategorized transactions and reports what remains. Warns if the run limit was hit (run again to continue). |
+
+> **Note:** The workflow processes up to 200 rule-matched and 40 AI-assisted transactions per run. For a large initial backlog, run it 2–3 times until all transactions are cleared.
+
+---
+
+### AR Aging Report (`ar-aging`)
+**Business purpose:** A snapshot of who owes you money and how overdue each invoice is — the basis for collections decisions.
+
+A single "overdue invoices" count buried in the daily review doesn't tell you what action to take. AR aging buckets invoices into standard 30/60/90/90+ day ranges, identifies customers with significant exposure, and flags accounts that have gone silent long enough to warrant a write-off conversation. This is the standard report accountants and CFOs use to manage receivables.
+
+**Steps and what they do:**
+| Step | Business action |
+|------|----------------|
+| Fetch open receivables | Queries all invoices with `status IN ('sent', 'overdue')`. Reports total count and total dollar value. |
+| Age receivables by bucket | Distributes invoices into: Current (not yet due), 1–30 days, 31–60 days, 61–90 days, 90+ days. Reports count and amount per bucket. |
+| Flag high-risk accounts | Isolates all invoices 60+ days overdue. Groups by customer to identify repeat exposure. Each customer with 60+ day overdue items generates a named warning. |
+| AR aging summary | Computes total AR vs total overdue. Surfaces the single customer with the largest overdue balance. |
+
+---
+
+### Adjusting Entries Review (`adjusting-entries`)
+**Business purpose:** Surface the accruals, prepaid amortizations, and deferred revenue items that must be booked before a close is complete in accounting terms.
+
+A "close" that only reconciles transactions and snaps a P&L isn't actually closed — it's missing the adjusting entries that GAAP and most accounting standards require. Accrued expenses that haven't been invoiced yet, prepaid software licenses that cover multiple months, advance payments from customers — all of these need journal entries to match revenue and expense to the period they belong to. This workflow detects those gaps and flags them for human review before you run Month-End Close.
+
+**Steps and what they do:**
+| Step | Business action |
+|------|----------------|
+| Detect missing accruals | Finds expense transactions tagged as `recurrence='monthly'` in the prior month. Checks whether the same vendor/description appears in the target month. Flags anything missing as a probable accrual needed. Returns `approval_required` so it shows up as a human action item. |
+| Check prepaid amortization | Finds expenses >$500 in categories like Insurance, Rent, SaaS, Software in the target month. Flags amounts >$2,000 as likely multi-month prepaids that should be split into monthly entries rather than expensed in a single period. |
+| Check deferred revenue | Finds invoices that were paid in the target month but have an `invoice_date` in a future month — these are advance payments that should sit in deferred revenue until the service period starts. |
+| Adjusting entries summary | Always returns `approval_required` — a deliberate checkpoint reminding the user to book the identified entries before running Month-End Close. |
+
+> **Important:** This workflow identifies adjustments; it does not book them. Adjusting entries are created manually in Transactions after reviewing the flagged items. Run Month-End Close only after the adjustments are booked.
+
+---
+
 ## Overview
 
 Finvio's workflow system lets users run predefined accounting operations as tracked, audited jobs. Each workflow consists of sequential steps; the framework handles execution, error handling, warning accumulation, and history.
@@ -72,9 +121,12 @@ lib/workflows/
 ├── index.ts                Registry + getWorkflow() lookup
 ├── recommendations.ts      System state → recommended workflows
 └── definitions/
-    ├── month-end.ts        Month-End Close
-    ├── bank-reconciliation.ts  Bank Reconciliation
-    └── daily-accounting.ts Daily Accounting Review
+    ├── categorize-transactions.ts  Categorize Transactions
+    ├── daily-accounting.ts         Daily Accounting Review
+    ├── ar-aging.ts                 AR Aging Report
+    ├── bank-reconciliation.ts      Bank Reconciliation
+    ├── adjusting-entries.ts        Adjusting Entries Review
+    └── month-end.ts                Month-End Close
 
 app/api/workflows/
 ├── run/route.ts            POST — execute workflow, returns full result
@@ -154,11 +206,14 @@ Steps access parameters via `ctx.parameters.month` etc. The `WorkflowDefinition.
 
 | Condition | Workflow | Priority |
 |-----------|---------|---------|
-| > 5 uncategorized transactions | Daily Accounting Review | High |
+| Any uncategorized transactions (>20 = high) | Categorize Transactions | High / Medium |
 | Any overdue invoices | Daily Accounting Review | High |
 | Sync errors in last 24h | Daily Accounting Review | Medium |
+| Any invoices 60+ days overdue | AR Aging Report | High |
+| > 3 open invoices (no high-risk) | AR Aging Report | Medium |
 | > 10 unreconciled transactions | Bank Reconciliation | Medium |
-| No `monthly_snapshots` row for previous month | Month-End Close | High |
+| No `monthly_snapshots` for previous month | Adjusting Entries Review | High |
+| No `monthly_snapshots` for previous month | Month-End Close | High |
 
 Recommendations appear as a banner at the top of the Workflows page. The `/api/workflows/recommendations` endpoint also exposes them programmatically.
 
