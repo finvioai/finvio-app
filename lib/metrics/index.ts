@@ -21,10 +21,8 @@ function startOfMonth(date: Date): string {
 }
 
 function monthsAgo(n: number): Date {
-  const d = new Date()
-  d.setMonth(d.getMonth() - n)
-  d.setDate(1)
-  return d
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth() - n, 1)
 }
 
 function isoMonth(date: Date): string {
