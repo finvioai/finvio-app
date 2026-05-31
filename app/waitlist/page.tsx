@@ -1,6 +1,6 @@
 import { SiteNav } from '@/components/landing/SiteNav'
 import { SiteFooter } from '@/components/landing/SiteFooter'
-import { LaunchListWidget } from '@/components/landing/LaunchListWidget'
+import { TallyWidget } from '@/components/landing/TallyWidget'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -36,7 +36,7 @@ export default function WaitlistPage() {
           </p>
 
           <div className="mx-auto mt-12 w-full max-w-md">
-            <LaunchListWidget />
+            <TallyWidget />
           </div>
 
           <ul className="mt-10 flex flex-col items-center justify-center gap-4 text-sm text-muted-ink sm:flex-row sm:gap-8">

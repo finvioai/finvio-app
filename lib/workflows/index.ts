@@ -1,11 +1,17 @@
 import { monthEndWorkflow } from './definitions/month-end'
 import { bankReconciliationWorkflow } from './definitions/bank-reconciliation'
 import { dailyAccountingWorkflow } from './definitions/daily-accounting'
+import { categorizeTransactionsWorkflow } from './definitions/categorize-transactions'
+import { arAgingWorkflow } from './definitions/ar-aging'
+import { adjustingEntriesWorkflow } from './definitions/adjusting-entries'
 
 export const WORKFLOW_REGISTRY = [
-  monthEndWorkflow,
-  bankReconciliationWorkflow,
+  categorizeTransactionsWorkflow,
   dailyAccountingWorkflow,
+  arAgingWorkflow,
+  bankReconciliationWorkflow,
+  adjustingEntriesWorkflow,
+  monthEndWorkflow,
 ]
 
 export function getWorkflow(id: string) {

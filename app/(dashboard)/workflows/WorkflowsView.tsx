@@ -14,6 +14,9 @@ import {
   Zap,
   ChevronDown,
   ChevronRight,
+  Tag,
+  Users,
+  BookOpen,
 } from 'lucide-react'
 import type { WorkflowMeta } from '@/lib/workflows/engine'
 import type { WorkflowRunRecord, WorkflowStepState, WorkflowRunStatus, WorkflowRecommendation } from '@/types'
@@ -46,6 +49,9 @@ const WORKFLOW_ICONS: Record<string, React.ElementType> = {
   'month-end': CalendarCheck,
   'bank-reconciliation': ArrowLeftRight,
   'daily-accounting': ClipboardList,
+  'categorize-transactions': Tag,
+  'ar-aging': Users,
+  'adjusting-entries': BookOpen,
 }
 
 function StepIcon({ status, visible }: { status: AnimatedStep['status']; visible: boolean }) {
@@ -318,9 +324,9 @@ function WorkflowCard({ workflow, lastRun, recommendation, cardState, onRun }: W
         {isActive && cardState.status !== 'running' ? (
           <button
             onClick={handleRun}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-off-white px-4 text-sm font-semibold text-navy hover:bg-hairline transition-colors"
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-off-white px-5 text-sm font-bold text-navy hover:bg-hairline transition-colors"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw className="h-4 w-4" />
             Run Again
           </button>
         ) : (
