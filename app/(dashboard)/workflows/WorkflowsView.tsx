@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, Fragment } from 'react'
 import {
   CalendarCheck,
   ArrowLeftRight,
@@ -349,7 +349,12 @@ function WorkflowCard({ workflow, lastRun, recommendation, cardState, onRun }: W
 
 // ── History table ─────────────────────────────────────────────────────────────
 
+const HISTORY_PAGE_SIZE = 10
+
 function RunHistoryTable({ runs }: { runs: WorkflowRunRecord[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+
   if (runs.length === 0) {
     return (
       <div className="rounded-xl border border-hairline bg-white py-12 text-center">
@@ -360,14 +365,17 @@ function RunHistoryTable({ runs }: { runs: WorkflowRunRecord[] }) {
     )
   }
 
+  const totalPages = Math.ceil(runs.length / HISTORY_PAGE_SIZE)
+  const pageRuns = runs.slice(page * HISTORY_PAGE_SIZE, (page + 1) * HISTORY_PAGE_SIZE)
+
   return (
     <div className="overflow-hidden rounded-xl border border-hairline bg-white">
       <table className="w-full">
         <thead className="border-b border-hairline bg-off-white">
           <tr>
-            {['Workflow', 'Status', 'Started', 'Duration', 'Warnings'].map(h => (
+            {['Workflow', 'Status', 'Started', 'Duration', 'Warnings', ''].map((h, i) => (
               <th
-                key={h}
+                key={i}
                 className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-ink"
               >
                 {h}
@@ -376,34 +384,116 @@ function RunHistoryTable({ runs }: { runs: WorkflowRunRecord[] }) {
           </tr>
         </thead>
         <tbody>
-          {runs.map(run => {
+          {pageRuns.map(run => {
+            const isExpanded = expandedId === run.id
             const durationMs =
               run.completed_at
                 ? new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()
                 : null
             const durationStr = durationMs != null ? `${(durationMs / 1000).toFixed(1)}s` : '—'
             const warnings = run.summary_json?.totalWarnings ?? 0
+            const steps = run.summary_json?.steps ?? []
+            const summary = run.summary_json?.summary
 
             return (
-              <tr key={run.id} className="border-b border-hairline/70 hover:bg-off-white transition-colors">
-                <td className="px-4 py-3 text-sm font-medium text-navy">{run.workflow_name}</td>
-                <td className="px-4 py-3">
-                  <RunStatusBadge status={run.status} />
-                </td>
-                <td className="px-4 py-3 text-xs text-muted-ink">{formatDate(run.started_at)}</td>
-                <td className="px-4 py-3 text-xs text-muted-ink">{durationStr}</td>
-                <td className="px-4 py-3 text-xs text-muted-ink">
-                  {warnings > 0 ? (
-                    <span className="font-medium text-yellow-700">{warnings}</span>
-                  ) : (
-                    '—'
-                  )}
-                </td>
-              </tr>
+              <Fragment key={run.id}>
+                <tr
+                  className="border-b border-hairline/70 hover:bg-off-white transition-colors cursor-pointer select-none"
+                  onClick={() => setExpandedId(isExpanded ? null : run.id)}
+                >
+                  <td className="px-4 py-3 text-sm font-medium text-navy">{run.workflow_name}</td>
+                  <td className="px-4 py-3">
+                    <RunStatusBadge status={run.status} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-ink">{formatDate(run.started_at)}</td>
+                  <td className="px-4 py-3 text-xs text-muted-ink">{durationStr}</td>
+                  <td className="px-4 py-3 text-xs text-muted-ink">
+                    {warnings > 0 ? (
+                      <span className="font-medium text-yellow-700">{warnings}</span>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-ink">
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-muted-ink" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-ink" />
+                    )}
+                  </td>
+                </tr>
+                {isExpanded && (
+                  <tr className="border-b border-hairline/70 bg-off-white/60">
+                    <td colSpan={6} className="px-6 py-4">
+                      {steps.length > 0 ? (
+                        <div className="space-y-2.5">
+                          {steps.map(step => (
+                            <div key={step.id} className="flex items-start gap-3">
+                              <StepIcon status={step.status} visible={true} />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium text-navy">{step.name}</p>
+                                {step.message && (
+                                  <p className="mt-0.5 text-xs text-muted-ink">{step.message}</p>
+                                )}
+                                {step.warnings && step.warnings.length > 0 && (
+                                  <ul className="mt-1 space-y-0.5">
+                                    {step.warnings.map((w, i) => (
+                                      <li key={i} className="text-xs text-yellow-700">{w}</li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {summary && (
+                            <div
+                              className={`mt-3 rounded-lg p-3 text-xs leading-relaxed ${
+                                run.status === 'completed'
+                                  ? 'bg-green-50 text-green-800'
+                                  : run.status === 'completed_with_warnings'
+                                  ? 'bg-yellow-50 text-yellow-800'
+                                  : 'bg-red-50 text-red-800'
+                              }`}
+                            >
+                              <pre className="whitespace-pre-wrap font-sans">{summary}</pre>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-ink">No step details available for this run.</p>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             )
           })}
         </tbody>
       </table>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-hairline px-4 py-3">
+          <span className="text-xs text-muted-ink">
+            Showing {page * HISTORY_PAGE_SIZE + 1}–{Math.min((page + 1) * HISTORY_PAGE_SIZE, runs.length)} of {runs.length} runs
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setPage(p => p - 1); setExpandedId(null) }}
+              disabled={page === 0}
+              className="inline-flex h-7 items-center rounded-md border border-hairline px-3 text-xs font-medium text-navy hover:bg-off-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            <span className="text-xs text-muted-ink">Page {page + 1} of {totalPages}</span>
+            <button
+              onClick={() => { setPage(p => p + 1); setExpandedId(null) }}
+              disabled={page >= totalPages - 1}
+              className="inline-flex h-7 items-center rounded-md border border-hairline px-3 text-xs font-medium text-navy hover:bg-off-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
