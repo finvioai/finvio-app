@@ -6,6 +6,18 @@ import { FinalCta } from '@/components/landing/FinalCta'
 export const metadata = {
   title: 'FAQ — Finvio',
   description: 'Common questions about Finvio — entity types, security, AI Advisor, migration, and more.',
+  openGraph: {
+    title: 'FAQ — Finvio',
+    description: 'Common questions about Finvio — entity types, security, AI Advisor, migration, and more.',
+    url: 'https://finvio.ai/faq',
+    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: 'Finvio FAQ' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FAQ — Finvio',
+    description: 'Common questions about Finvio — entity types, security, AI Advisor, migration, and more.',
+    images: ['/og-default.png'],
+  },
 }
 
 export default function FaqPage() {

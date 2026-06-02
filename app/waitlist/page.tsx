@@ -5,12 +5,18 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Join the Waitlist — Finvio',
-  description:
-    'Get early access to Finvio — the AI CFO built for modern founders. Join thousands of founders on the waitlist.',
+  description: 'Get early access to Finvio — the AI CFO built for modern founders. Connect your bank, Stripe, and QuickBooks to get real-time financial clarity.',
   openGraph: {
     title: 'Join the Waitlist — Finvio',
-    description: 'Get early access to Finvio, the AI CFO for modern founders.',
+    description: 'Get early access to Finvio — the AI CFO built for modern founders. Connect your bank, Stripe, and QuickBooks to get real-time financial clarity.',
     url: 'https://finvio.ai/waitlist',
+    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: 'Finvio — Join the Waitlist' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Join the Waitlist — Finvio',
+    description: 'Get early access to Finvio — the AI CFO built for modern founders.',
+    images: ['/og-default.png'],
   },
 }
 

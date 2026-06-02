@@ -1,8 +1,11 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getSession, getOrgInfo } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { getDashboardMetrics } from '@/lib/metrics'
 import { DashboardView } from './DashboardView'
+
+export const metadata: Metadata = { title: 'Overview' }
 
 export default async function DashboardPage() {
   const session = await getSession()

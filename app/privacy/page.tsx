@@ -7,7 +7,15 @@ export const metadata: Metadata = {
   description: 'How Finvio collects, uses, and protects your financial data.',
   openGraph: {
     title: 'Privacy Policy — Finvio',
+    description: 'How Finvio collects, uses, and protects your financial data.',
     url: 'https://finvio.ai/privacy',
+    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: 'Finvio Privacy Policy' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Privacy Policy — Finvio',
+    description: 'How Finvio collects, uses, and protects your financial data.',
+    images: ['/og-default.png'],
   },
 }
 
