@@ -6,7 +6,19 @@ import { FinalCta } from '@/components/landing/FinalCta'
 
 export const metadata = {
   title: 'Features — Finvio',
-  description: 'Every primitive a modern finance team needs. Built for US LLCs, startups, and growing enterprises.',
+  description: 'Automated financial syncing, AI transaction categorization, real-time MRR/ARR, invoice management, and workflow automation — built for founders.',
+  openGraph: {
+    title: 'Features — Finvio',
+    description: 'Automated financial syncing, AI transaction categorization, real-time MRR/ARR, invoice management, and workflow automation — built for founders.',
+    url: 'https://finvio.ai/features',
+    images: [{ url: '/og-features.png', width: 1200, height: 630, alt: 'Finvio Features' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Features — Finvio',
+    description: 'Automated financial syncing, AI transaction categorization, real-time MRR/ARR, invoice management, and workflow automation — built for founders.',
+    images: ['/og-features.png'],
+  },
 }
 
 export default function FeaturesPage() {

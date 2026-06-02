@@ -13,10 +13,18 @@ export const revalidate = 60
 
 export const metadata: Metadata = {
   title: 'Insights — Finvio',
-  description: "The modern CFO's library on autonomous finance, US tax strategy, and multi-entity ops.",
+  description: "Financial insights for modern founders. Understand your burn rate, runway, churn, and revenue trends with AI-powered clarity.",
   openGraph: {
     title: 'Insights — Finvio',
-    description: "The modern CFO's library on autonomous finance, US tax strategy, and multi-entity ops.",
+    description: "Financial insights for modern founders. Understand your burn rate, runway, churn, and revenue trends with AI-powered clarity.",
+    url: 'https://finvio.ai/insights',
+    images: [{ url: '/og-default.png', width: 1200, height: 630, alt: 'Finvio Insights' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Insights — Finvio',
+    description: "Financial insights for modern founders. Understand your burn rate, runway, churn, and revenue trends with AI-powered clarity.",
+    images: ['/og-default.png'],
   },
 }
 

@@ -2,7 +2,9 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Private Beta — Finvio',
+  title: 'Sign Up — Finvio',
+  description: 'Create your Finvio account and get AI-powered visibility into your company finances.',
+  robots: { index: false, follow: false },
 }
 
 export default function SignupPage() {
