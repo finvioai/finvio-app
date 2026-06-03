@@ -24,7 +24,7 @@ export function Hero() {
               href="/signup"
               className="bg-brand-gradient shadow-brand-glow h-12 inline-flex items-center justify-center rounded-lg px-8 text-sm font-bold text-navy-foreground transition-transform active:scale-[0.98]"
             >
-              Start Free — Connect Your Bank
+              Start Free | Connect Your Bank
             </Link>
             <a
               href="mailto:hello@finvio.ai"
