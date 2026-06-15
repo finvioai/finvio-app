@@ -58,11 +58,11 @@ const features = [
 
 export function FeatureGrid({ showHeader = true }: { showHeader?: boolean }) {
   return (
-    <section id="features" className="relative py-32">
+    <section id="features" className="relative py-24">
       <div className="absolute inset-x-0 top-0 -z-10 h-96 bg-gradient-to-b from-brand-tint to-transparent" />
       <div className="mx-auto max-w-7xl px-6">
         {showHeader && (
-          <div className="mx-auto mb-16 max-w-3xl text-center">
+          <div className="mx-auto mb-10 max-w-3xl text-center">
             <span className="font-mono-eyebrow text-brand">The platform</span>
             <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-navy md:text-5xl">
               Ten primitives.{' '}
