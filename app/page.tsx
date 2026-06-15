@@ -6,8 +6,6 @@ import { AiAdvisorShowcase } from '@/components/landing/AiAdvisorShowcase'
 import { Integrations } from '@/components/landing/Integrations'
 import { Pricing } from '@/components/landing/Pricing'
 import { Faq } from '@/components/landing/Faq'
-import { FinalCta } from '@/components/landing/FinalCta'
-
 export default function LandingPage() {
   return (
     <div data-landing>
@@ -21,7 +19,6 @@ export default function LandingPage() {
         <Integrations />
         <Pricing />
         <Faq />
-        <FinalCta />
       </main>
       <SiteFooter />
     </div>
