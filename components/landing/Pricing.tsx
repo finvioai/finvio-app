@@ -5,10 +5,10 @@ export function Pricing({
   description?: string
 }) {
   return (
-    <section id="pricing" className="py-32">
+    <section id="pricing" className="py-24">
       <div className="mx-auto max-w-7xl px-6">
         {showHeader && (
-          <div className="mx-auto mb-16 max-w-3xl text-center">
+          <div className="mx-auto mb-10 max-w-3xl text-center">
             <span className="font-mono-eyebrow text-brand">Pricing</span>
             <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-navy md:text-5xl">
               Standardized tiers.<br />

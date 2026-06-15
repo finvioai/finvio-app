@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // Node.js modules at runtime so their worker file paths resolve correctly.
   serverExternalPackages: ['pdfjs-dist', 'pdf-parse'],
   images: {
+    unoptimized: process.env.NODE_ENV === 'development',
     remotePatterns: [
       {
         protocol: 'https',

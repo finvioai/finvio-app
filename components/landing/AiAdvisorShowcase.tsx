@@ -1,6 +1,6 @@
 export function AiAdvisorShowcase() {
   return (
-    <section className="bg-off-white py-32">
+    <section className="bg-off-white py-24">
       <div className="mx-auto max-w-7xl px-6">
         <div className="grid items-center gap-16 md:grid-cols-2">
           <div>

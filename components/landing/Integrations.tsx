@@ -11,9 +11,9 @@ const integrations = [
 
 export function Integrations() {
   return (
-    <section className="bg-off-white py-32">
+    <section className="bg-off-white py-24">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="mx-auto mb-16 max-w-3xl text-center">
+        <div className="mx-auto mb-10 max-w-3xl text-center">
           <span className="font-mono-eyebrow text-brand">Every revenue source. One ledger.</span>
           <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-navy md:text-5xl">
             Connect everything in{' '}

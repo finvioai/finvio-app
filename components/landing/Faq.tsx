@@ -34,7 +34,7 @@ export function Faq({ showHeader = true }: { showHeader?: boolean }) {
   const [open, setOpen] = useState<number | null>(null)
 
   return (
-    <section id="faq" className="bg-off-white py-32">
+    <section id="faq" className="bg-off-white py-24">
       <div className="mx-auto max-w-3xl px-6">
         {showHeader && (
           <div className="mb-12 text-center">
